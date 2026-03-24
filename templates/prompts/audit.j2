@@ -1,0 +1,35 @@
+{{ prompt_content }}
+
+---
+
+## 审核任务
+{{ description }}
+
+{% if prompt_template %}
+## 具体要求
+{{ prompt_template }}
+{% endif %}
+
+---
+
+## 待审文档
+{{ document }}
+
+{% if rules %}
+---
+
+## 参考规则
+{{ rules }}
+{% endif %}
+
+---
+
+请以 JSON 格式输出审核结果：
+```json
+{
+  "passed": true/false,
+  "finding": "审核发现（简述问题或确认合规）",
+  "evidence": "支撑证据（引用具体位置）",
+  "suggestion": "修改建议（如通过可为空）"
+}
+```

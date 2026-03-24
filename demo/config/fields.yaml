@@ -1,0 +1,354 @@
+﻿groups:
+  - id: basic_info
+    title: 工程基本信息
+    description: 这些字段会复用到封面、编制说明和工程概况。
+    fields:
+      - id: project_title
+        label: 工程标题
+        type: text
+        required: true
+        default: 500kV 线路工程
+      - id: plan_name
+        label: 方案名称
+        type: text
+        required: true
+        default: 机械挖孔基础施工方案
+      - id: plan_date
+        label: 编制日期
+        type: text
+        required: true
+        default: 2025年12月
+      - id: project_voltage_level
+        label: 电压等级
+        type: text
+        required: true
+        default: 500kV
+      - id: project_alias
+        label: 线路工程简称/后缀
+        type: text
+        required: true
+        default: 基础分部工程
+
+  - id: line_info
+    title: 线路与通信信息
+    fields:
+      - id: start_station
+        label: 起点站
+        type: text
+        required: true
+        default: 东山开关站
+      - id: end_station
+        label: 终点站
+        type: text
+        required: true
+        default: 北江开关站
+      - id: segment_label
+        label: 标段名称
+        type: text
+        required: true
+        default: A标段
+      - id: line_length_km
+        label: 新建线路长度（千米）
+        type: text
+        required: true
+        default: 12.8
+      - id: same_tower_section_length_km
+        label: 同塔双回段长度（km）
+        type: text
+        required: true
+        default: 6.4
+      - id: conductor_model
+        label: 导线型号
+        type: text
+        required: true
+        default: 4×JL3/G1A-630/45钢芯高导电率铝绞线
+      - id: communication_project_alias
+        label: 通信工程后缀
+        type: text
+        required: true
+        default: 通信配套工程
+      - id: opgw_quantity
+        label: OPGW 根数
+        type: text
+        required: true
+        default: 2
+      - id: opgw_core_count
+        label: OPGW 芯数
+        type: text
+        required: true
+        default: 48
+      - id: opgw_length_km
+        label: OPGW 长度（km）
+        type: text
+        required: true
+        default: 6.4
+      - id: fault_locator_count
+        label: 精确故障定位装置数量
+        type: text
+        required: true
+        default: 2
+      - id: fire_monitor_count
+        label: 山火在线监测装置数量
+        type: text
+        required: true
+        default: 2
+      - id: bird_guard_total_count
+        label: 人工鸟笼总数量
+        type: text
+        required: true
+        default: 24
+      - id: bird_guard_per_tower
+        label: 每基塔配置数量
+        type: text
+        required: true
+        default: 2
+      - id: bird_guard_crossarm
+        label: 地线横担配置数量
+        type: text
+        required: true
+        default: 1
+      - id: bird_guard_body
+        label: 塔身配置数量
+        type: text
+        required: true
+        default: 1
+
+  - id: segment_info
+    title: 标段与参建单位
+    fields:
+      - id: tower_start_no
+        label: 起始塔号
+        type: text
+        required: true
+        default: A118
+      - id: tower_end_no
+        label: 终止塔号
+        type: text
+        required: true
+        default: A126
+      - id: route_area
+        label: 线路途经区域
+        type: text
+        required: true
+        default: XX县低山丘陵区
+      - id: tower_total
+        label: 新建杆塔总数
+        type: text
+        required: true
+        default: 9
+      - id: strain_tower_count
+        label: 耐张塔数量
+        type: text
+        required: true
+        default: 3
+      - id: straight_tower_count
+        label: 直线塔数量
+        type: text
+        required: true
+        default: 6
+      - id: mechanical_foundation_count
+        label: 机械挖孔基础数量
+        type: text
+        required: true
+        default: 18
+      - id: major_crossings
+        label: 主要跨越说明
+        type: textarea
+        required: true
+        default: X197县道、乡村道路、10kV电力线、380V低压线及通信线
+      - id: owner_full_name
+        label: 建设单位
+        type: text
+        required: true
+        default: 华南电网有限责任公司清远供电局
+      - id: supervision_unit
+        label: 监理单位
+        type: text
+        required: true
+        default: 监理咨询有限公司
+      - id: design_unit
+        label: 设计单位
+        type: text
+        required: true
+        default: 设计有限公司
+      - id: construction_unit
+        label: 施工单位
+        type: text
+        required: true
+        default: 南岭能源发展有限公司
+      - id: planned_start_date
+        label: 计划开工日期
+        type: text
+        required: true
+        default: 2026年03月01日
+      - id: planned_end_date
+        label: 计划竣工日期
+        type: text
+        required: true
+        default: 2026年08月30日
+
+  - id: geology_info
+    title: 地形与岩土条件
+    fields:
+      - id: high_mountain_ratio
+        label: 高山占比
+        type: text
+        required: true
+        default: 40%
+      - id: mountain_ratio
+        label: 山地占比
+        type: text
+        required: true
+        default: 60%
+      - id: low_mountain_elevation_range
+        label: 低山海拔范围
+        type: text
+        required: true
+        default: 450m~780m
+      - id: low_mountain_slope
+        label: 低山地形坡度
+        type: text
+        required: true
+        default: 20°~35°
+      - id: hill_elevation_range
+        label: 丘陵海拔范围
+        type: text
+        required: true
+        default: 280m~450m
+      - id: hill_slope
+        label: 丘陵地形坡度
+        type: text
+        required: true
+        default: 8°~20°
+      - id: soil_thickness_range
+        label: 覆土层厚度范围
+        type: text
+        required: true
+        default: 1.0m~3.5m
+      - id: soil_bearing_capacity_range
+        label: 覆土层承载力范围
+        type: text
+        required: true
+        default: 180kPa~260kPa
+      - id: weathered_thickness_range
+        label: 全风化～强风化层厚度
+        type: text
+        required: true
+        default: 8m
+      - id: weathered_capacity_range
+        label: 全风化～强风化层承载力范围
+        type: text
+        required: true
+        default: 300kPa~500kPa
+      - id: medium_weathered_capacity_range
+        label: 中风化层承载力范围
+        type: text
+        required: true
+        default: 800kPa~1200kPa
+
+  - id: construction_parameters
+    title: 施工关键参数
+    fields:
+      - id: hole_diameter_range
+        label: 孔径范围
+        type: text
+        required: true
+        default: 1.2m~1.4m
+      - id: buried_depth_range
+        label: 埋深范围
+        type: text
+        required: true
+        default: 7.5m~10.5m
+      - id: main_cover_mm
+        label: 主筋保护层厚度（mm）
+        type: text
+        required: true
+        default: 70
+      - id: bottom_cover_mm
+        label: 桩底保护层厚度（mm）
+        type: text
+        required: true
+        default: 100
+      - id: top_cover_mm
+        label: 桩顶保护层厚度（mm）
+        type: text
+        required: true
+        default: 70
+      - id: hoop_zone_multiplier
+        label: 柱顶加密区倍数
+        type: text
+        required: true
+        default: 5
+      - id: hoop_spacing_mm
+        label: 外钢箍间距（mm）
+        type: text
+        required: true
+        default: 200
+      - id: hoop_extra_zone_mm
+        label: 变截面加密区长度（mm）
+        type: text
+        required: true
+        default: 500
+      - id: shield_plate_start_mm
+        label: 护板起始位置（mm）
+        type: text
+        required: true
+        default: 300
+      - id: shield_plate_spacing_mm
+        label: 护板层间距（mm）
+        type: text
+        required: true
+        default: 2000
+
+  - id: organization_plan
+    title: 施工组织与工期参数
+    description: 第4章使用的组织与进度参数，默认值已给出，可按项目实际调整。
+    expanded: false
+    fields:
+      - id: construction_team_count
+        label: 挖孔基础施工班组数量
+        type: text
+        required: true
+        default: 2
+      - id: foundation_cycle_days_range
+        label: 单基基础平均施工周期（天）
+        type: text
+        required: true
+        default: 2~3
+      - id: foundation_completion_target
+        label: 挖孔基础计划完成时间
+        type: text
+        required: true
+        default: 2026年08月
+
+  - id: tables
+    title: 可编辑表格
+    description: 默认值来自 data/2.json，可直接修改 Markdown 表格后参与生成。
+    expanded: false
+    fields:
+      - id: foundation_technical_parameters_table
+        label: 2.4 挖孔基础技术参数表
+        type: markdown_table
+        required: true
+        height: 420
+        source_ref:
+          data_file: data/2.json
+          path: ["1、线路标段划分：", "2.4挖孔基础技术参数"]
+          content_index: 1
+      - id: construction_staffing_table
+        label: 4.3 挖孔基础施工现场人员配备表
+        type: markdown_table
+        required: true
+        height: 320
+        default: |
+          | 序号 | 工作岗位 | 技工 | 普工 | 合计 |
+          | --- | --- | --- | --- | --- |
+          | 1 | 班组负责人 | 1 | 0 | 1 |
+          | 2 | 班组安全员 | 1 | 0 | 1 |
+          | 3 | 测工 | 1 | 0 | 1 |
+          | 4 | 旋挖钻机操作工 | 1 | 0 | 1 |
+          | 5 | 电工 | 1 | 0 | 1 |
+          | 6 | 振捣工 | 0 | 2 | 2 |
+          | 7 | 其他施工人员 | 0 | 6 | 6 |
+          | 8 | 总计 | 4 | 8 | 12 |
+

@@ -1,0 +1,19 @@
+# 集成测试项目配置
+# API Key 从 .env 读取（优先 LLM_API_KEY，其次 API_KEY）
+
+llm:
+  model: "qwen3-max"
+  temperature: 0.7
+  max_tokens: 1024
+  api_base: "https://dashscope.aliyuncs.com/compatible-mode/v1"
+  # 运行时可被 .env 中的 MODEL_NAME / BASE_URL 覆盖
+
+knowledge:
+  db_path: "tests/fixtures/knowledge/test.db"
+  namespace: "integration_test"
+
+generation:
+  templates_dir: "tests/fixtures/templates"
+
+audit:
+  checkpoints_path: "tests/fixtures/checkpoints/substation_checkpoints.yaml"

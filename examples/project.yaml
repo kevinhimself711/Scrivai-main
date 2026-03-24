@@ -1,0 +1,19 @@
+# Scrivai 项目配置示例
+# 默认按阿里云百炼 OpenAI 兼容接口配置。
+
+llm:
+  model: "qwen3-max"
+  temperature: 0.2
+  max_tokens: 4096
+  api_base: "https://dashscope.aliyuncs.com/compatible-mode/v1"
+  # api_key 从 .env 读取（优先 LLM_API_KEY，其次 API_KEY）
+
+knowledge:
+  db_path: "data/scrivai.db"
+  namespace: "default"
+
+generation:
+  templates_dir: "templates/chapters"
+
+audit:
+  checkpoints_path: "config/checkpoints.yaml"

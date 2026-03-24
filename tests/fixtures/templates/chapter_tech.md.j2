@@ -1,0 +1,32 @@
+## 第二章 技术方案
+
+请根据以下信息撰写技术方案：
+
+### 用户输入
+{{ user_inputs | tojson(indent=2) }}
+
+{% if retrieved_cases %}
+### 相关历史案例
+{% for case in retrieved_cases %}
+--- 案例 {{ loop.index }} ---
+{{ case.content }}
+{% endfor %}
+{% endif %}
+
+{% if previous_summary %}
+### 前文摘要
+{{ previous_summary }}
+{% endif %}
+
+{% if glossary %}
+### 术语表
+{% for term, definition in glossary.items() %}
+- **{{ term }}**: {{ definition }}
+{% endfor %}
+{% endif %}
+
+要求：
+1. 包含电气主接线、设备选型、布置方案
+2. 使用专业技术术语
+3. 控制在 400 字以内
+4. 技术参数要准确
