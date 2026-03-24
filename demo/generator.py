@@ -25,13 +25,27 @@ from demo.source_data import render_block_ref
 
 _CODE_FENCE_PATTERN = re.compile(r"^\s*```(?:markdown)?\s*|\s*```\s*$", re.MULTILINE)
 _PERCENT_PATTERN = re.compile(r"^\s*(\d+(?:\.\d+)?)\s*%?\s*$")
-_LLM_REWRITE_CHAPTER_IDS = {"chapter_1", "chapter_2"}
+_STYLE_TOKENS = {
+    "文风",
+    "专业",
+    "正式",
+    "国网",
+    "南网",
+    "口径",
+    "结构",
+    "章节",
+    "保持",
+    "融入",
+}
+_DEFAULT_FALLBACK_REWRITE_IDS = ("chapter_1", "chapter_2")
 _DEFAULT_MODEL = "qwen3-max"
 _DEFAULT_REWRITE_MODEL = _DEFAULT_MODEL
 _DEFAULT_API_BASE = "https://dashscope.aliyuncs.com/compatible-mode/v1"
 _DEFAULT_TEMPERATURE = "0.2"
 _DEFAULT_MAX_TOKENS = "4096"
 _DEFAULT_REWRITE_MAX_TOKENS = "3072"
+_DEFAULT_REWRITE_CHAPTER_LIMIT = "4"
+_DEFAULT_REWRITE_CONCURRENCY = "3"
 
 
 def build_initial_demo_inputs(
@@ -86,7 +100,7 @@ def generate_demo_markdown(
         ),
     }
 
-    fragments: list[dict[str, str]] = []
+    fragments: list[dict[str, Any]] = []
     for chapter in chapters:
         context = dict(base_context)
         context["source_blocks"] = _resolve_source_blocks(chapter)
@@ -95,6 +109,8 @@ def generate_demo_markdown(
                 "id": chapter["id"],
                 "title": chapter["title"],
                 "markdown": _render_fragment(chapter["template"], context),
+                "rewrite_enabled": bool(chapter.get("rewrite_enabled", False)),
+                "rewrite_topics": chapter.get("rewrite_topics", []),
             }
         )
 
@@ -213,17 +229,14 @@ def _sum_percentages(*values: str) -> str:
 
 
 def _apply_custom_requirements_to_fragments(
-    fragments: list[dict[str, str]],
+    fragments: list[dict[str, Any]],
     custom_requirements: str,
     llm_config: dict[str, Any],
-) -> list[dict[str, str]]:
-    target_indexes = [
-        index for index, fragment in enumerate(fragments) if fragment["id"] in _LLM_REWRITE_CHAPTER_IDS
-    ]
+) -> list[dict[str, Any]]:
+    target_indexes = _select_rewrite_target_indexes(fragments, custom_requirements, llm_config)
     if not target_indexes:
         return fragments
 
-    # 第 1/2 章互不依赖，可以并行改写，把总等待时间从两次串行调用压成一次最长调用。
     def rewrite(index: int) -> tuple[int, str]:
         fragment = fragments[index]
         client = _build_llm_client(llm_config, purpose="rewrite")
@@ -236,8 +249,8 @@ def _apply_custom_requirements_to_fragments(
         return index, rewritten
 
     rewritten_map: dict[int, str] = {}
-    max_workers = min(len(target_indexes), 2)
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+    concurrency = min(len(target_indexes), _resolve_rewrite_concurrency(llm_config))
+    with ThreadPoolExecutor(max_workers=concurrency) as executor:
         for index, rewritten in executor.map(rewrite, target_indexes):
             rewritten_map[index] = rewritten
 
@@ -245,6 +258,95 @@ def _apply_custom_requirements_to_fragments(
     for index, rewritten in rewritten_map.items():
         merged_fragments[index]["markdown"] = rewritten
     return merged_fragments
+
+
+def _select_rewrite_target_indexes(
+    fragments: list[dict[str, Any]],
+    custom_requirements: str,
+    llm_config: dict[str, Any],
+) -> list[int]:
+    requirement_text = custom_requirements.strip()
+    limit = _resolve_rewrite_chapter_limit(llm_config)
+
+    scored_targets: list[tuple[int, int]] = []
+    for index, fragment in enumerate(fragments):
+        if not fragment.get("rewrite_enabled", False):
+            continue
+        score = _score_fragment_for_rewrite(fragment, requirement_text)
+        if score > 0:
+            scored_targets.append((index, score))
+
+    if scored_targets:
+        scored_targets.sort(key=lambda item: (-item[1], item[0]))
+        selected = [index for index, _ in scored_targets[:limit]]
+        if _contains_style_signal(requirement_text):
+            selected = _append_default_rewrite_indexes(fragments, selected, limit)
+        return selected
+
+    fallback_indexes = [
+        index
+        for index, fragment in enumerate(fragments)
+        if fragment["id"] in _DEFAULT_FALLBACK_REWRITE_IDS and fragment.get("rewrite_enabled", False)
+    ]
+    if fallback_indexes:
+        return fallback_indexes[:limit]
+
+    return [
+        index
+        for index, fragment in enumerate(fragments)
+        if fragment.get("rewrite_enabled", False)
+    ][:limit]
+
+
+def _append_default_rewrite_indexes(
+    fragments: list[dict[str, Any]],
+    selected_indexes: list[int],
+    limit: int,
+) -> list[int]:
+    merged = list(selected_indexes)
+    for chapter_id in _DEFAULT_FALLBACK_REWRITE_IDS:
+        if len(merged) >= limit:
+            break
+        fallback_index = next(
+            (
+                index
+                for index, fragment in enumerate(fragments)
+                if fragment["id"] == chapter_id and fragment.get("rewrite_enabled", False)
+            ),
+            None,
+        )
+        if fallback_index is not None and fallback_index not in merged:
+            merged.append(fallback_index)
+    return merged
+
+
+def _score_fragment_for_rewrite(fragment: dict[str, Any], custom_requirements: str) -> int:
+    score = 0
+    requirement_text = custom_requirements.casefold()
+    for topic in fragment.get("rewrite_topics", []):
+        normalized_topic = str(topic).strip().casefold()
+        if normalized_topic and normalized_topic in requirement_text:
+            score += max(2, len(normalized_topic))
+    return score
+
+
+def _contains_style_signal(custom_requirements: str) -> bool:
+    normalized = custom_requirements.casefold()
+    return any(token.casefold() in normalized for token in _STYLE_TOKENS)
+
+
+def _resolve_rewrite_chapter_limit(llm_config: dict[str, Any]) -> int:
+    raw_value = str(
+        llm_config.get("rewrite_chapter_limit", _DEFAULT_REWRITE_CHAPTER_LIMIT)
+    ).strip() or _DEFAULT_REWRITE_CHAPTER_LIMIT
+    return max(1, int(raw_value))
+
+
+def _resolve_rewrite_concurrency(llm_config: dict[str, Any]) -> int:
+    raw_value = str(
+        llm_config.get("rewrite_concurrency", _DEFAULT_REWRITE_CONCURRENCY)
+    ).strip() or _DEFAULT_REWRITE_CONCURRENCY
+    return max(1, int(raw_value))
 
 
 def _build_llm_client(llm_config: dict[str, Any], purpose: str = "default") -> LLMClient:
@@ -281,7 +383,8 @@ def _resolve_model_for_purpose(llm_config: dict[str, Any], purpose: str) -> str:
 def _resolve_max_tokens_for_purpose(llm_config: dict[str, Any], purpose: str) -> int:
     key = "rewrite_max_tokens" if purpose == "rewrite" else "max_tokens"
     default_value = _DEFAULT_REWRITE_MAX_TOKENS if purpose == "rewrite" else _DEFAULT_MAX_TOKENS
-    return int(str(llm_config.get(key, llm_config.get("max_tokens", default_value))).strip() or default_value)
+    raw_value = str(llm_config.get(key, llm_config.get("max_tokens", default_value))).strip()
+    return int(raw_value or default_value)
 
 
 def _apply_custom_requirements(
@@ -291,12 +394,13 @@ def _apply_custom_requirements(
     custom_requirements: str,
 ) -> str:
     prompt = """
-你是电力线路工程施工方案编辑助手。请只改写当前章节，把客制化要求自然融入现有表述。
+你是电力线路工程施工方案编辑助手。请只改写当前章节，把与当前章节相关的客制化要求自然融入现有表述。
+
 绝对要求：
 1. 只输出当前章节，不新增、删除、合并章节。
 2. 必须完整保留现有 Markdown 标题层级、表格结构、工程数据和编号顺序，不得省略任何原有小节、列表项或表格。
-3. 如客制化要求与本章节关系不大，只做最小必要融入。
-4. 若客制化要求包含明确主题词，例如“雨季施工”“环保水保”“山区运输”“边坡稳定”“夜间施工”，请在相关段落中明确体现这些主题词或其正式同义表述，不要只写成笼统的“客制化要求”。
+3. 只处理与当前章节直接相关的要求；如果客户要求与本章节关系不大，只做最小必要融入。
+4. 若客制化要求包含明确主题词，例如“雨季施工”“环保水保”“山区运输”“边坡稳定”“夜间施工”“质量控制”“应急处置”，请在相关段落中明确体现这些主题词或其正式同义表述，不要只写成笼统概括。
 5. 不输出解释、前后缀、代码块或“修改说明”。
 
 当前章节标题：
@@ -353,4 +457,12 @@ def load_llm_config_from_env() -> dict[str, Any]:
         "temperature": os.getenv("TEMPERATURE", _DEFAULT_TEMPERATURE),
         "max_tokens": os.getenv("MAX_TOKENS", _DEFAULT_MAX_TOKENS),
         "rewrite_max_tokens": os.getenv("REWRITE_MAX_TOKENS", _DEFAULT_REWRITE_MAX_TOKENS),
+        "rewrite_chapter_limit": os.getenv(
+            "REWRITE_CHAPTER_LIMIT",
+            _DEFAULT_REWRITE_CHAPTER_LIMIT,
+        ),
+        "rewrite_concurrency": os.getenv(
+            "REWRITE_CONCURRENCY",
+            _DEFAULT_REWRITE_CONCURRENCY,
+        ),
     }

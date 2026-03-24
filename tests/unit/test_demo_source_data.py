@@ -1,4 +1,4 @@
-﻿"""线路工程 demo 源数据工具测试。"""
+"""线路工程 demo 源数据工具测试。"""
 
 from demo.source_data import build_chapter_draft, collect_source_stats, format_tree, render_block_ref
 
@@ -48,3 +48,32 @@ def test_render_block_ref_returns_markdown_table() -> None:
 
     assert "| 杆塔号 | 杆塔型式 | 呼高 |" in table
     assert "A118" in table
+
+
+def test_render_block_ref_can_render_node_level_table() -> None:
+    """新 JSON 中的节点级 table 应能直接渲染。"""
+    table = render_block_ref(
+        "data/7.json",
+        {
+            "path": ["7 应急处置方案", "7.2 预防及应急措施", "7.2.3 应急救援物资"],
+            "render_node": True,
+        },
+    )
+
+    assert "| 序号 | 物资 |" in table
+    assert "吸收性明胶海绵" in table
+    assert "应急车辆" in table
+
+
+def test_render_block_ref_can_render_node_level_list() -> None:
+    """新 JSON 中的节点级 list 应能渲染为 Markdown 列表。"""
+    content = render_block_ref(
+        "data/6.json",
+        {
+            "path": ["6 质量控制措施", "6.5 标准工艺施工要求", "1 标准工艺施工要点", "允许偏差"],
+            "render_node": True,
+        },
+    )
+
+    assert "- 1）桩径：" in content
+    assert "- 14）地脚螺栓露出混凝土面高度：" in content

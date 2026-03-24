@@ -49,7 +49,7 @@ def main() -> None:
     _init_field_defaults()
 
     st.title("线路工程施工方案 Demo")
-    st.caption("当前 Demo 已启用封面、审批页、目录和第 1 至第 5 章，支持后续按章节继续扩展。")
+    st.caption("当前 Demo 已启用封面、审批页、目录和第 1 至第 8 章，支持后续按章节继续扩展。")
 
     demo_type = st.selectbox("工程类型", ["线路工程"], index=0)
     st.info(f"当前工程类型：{demo_type}")
@@ -66,6 +66,14 @@ def main() -> None:
         rewrite_max_tokens = st.text_input(
             "rewrite_max_tokens",
             value=str(env_defaults["rewrite_max_tokens"]),
+        )
+        rewrite_chapter_limit = st.text_input(
+            "rewrite_chapter_limit",
+            value=str(env_defaults["rewrite_chapter_limit"]),
+        )
+        rewrite_concurrency = st.text_input(
+            "rewrite_concurrency",
+            value=str(env_defaults["rewrite_concurrency"]),
         )
 
         st.divider()
@@ -86,7 +94,7 @@ def main() -> None:
             "客制化要求",
             help=(
                 "如填写，将调用在线 LLM 对当前文档做受控改写。"
-                "当前默认只改写第 1、2 章，以兼顾速度、稳定性和结构完整性。"
+                "系统会根据章节标签和客制化关键词自动选择相关章节，并在上限范围内并行改写。"
             ),
             height=180,
         )
@@ -112,6 +120,8 @@ def main() -> None:
             "temperature": temperature.strip(),
             "max_tokens": max_tokens.strip(),
             "rewrite_max_tokens": rewrite_max_tokens.strip(),
+            "rewrite_chapter_limit": rewrite_chapter_limit.strip(),
+            "rewrite_concurrency": rewrite_concurrency.strip(),
         }
 
         try:

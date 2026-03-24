@@ -5,6 +5,7 @@ chapters:
     include_in_toc: false
     template: cover.md.j2
     data_file: data/2.json
+    rewrite_enabled: false
     source_paths:
       - ["500kV 线路工程XXXXX"]
       - ["机械挖孔基础施工方案"]
@@ -15,6 +16,7 @@ chapters:
     include_in_toc: false
     template: approval.md.j2
     data_file: data/2.json
+    rewrite_enabled: false
     source_paths:
       - ["机械挖孔基础施工方案 （施工单位审批页） （单位公章）"]
 
@@ -24,6 +26,7 @@ chapters:
     include_in_toc: false
     template: toc.md.j2
     data_file: data/2.json
+    rewrite_enabled: false
     source_paths:
       - ["目录"]
 
@@ -33,6 +36,16 @@ chapters:
     include_in_toc: true
     template: chapter_1.md.j2
     data_file: data/2.json
+    rewrite_enabled: true
+    rewrite_topics:
+      - 编制说明
+      - 编制目的
+      - 编制依据
+      - 适用范围
+      - 编制原则
+      - 总体要求
+      - 文风
+      - 口径
     source_paths:
       - ["1 编制说明"]
       - ["1 编制说明", "1.1 编制目的"]
@@ -57,6 +70,17 @@ chapters:
     include_in_toc: true
     template: chapter_2.md.j2
     data_file: data/2.json
+    rewrite_enabled: true
+    rewrite_topics:
+      - 工程概况
+      - 线路信息
+      - 地形情况
+      - 交通情况
+      - 跨越
+      - 工程量
+      - 基础参数
+      - 施工说明
+      - 塔位
     source_paths:
       - ["2 工程概况"]
       - ["(1) 线路部分"]
@@ -95,6 +119,18 @@ chapters:
     include_in_toc: true
     template: chapter_3.md.j2
     data_file: data/3.json
+    rewrite_enabled: true
+    rewrite_topics:
+      - 施工技术
+      - 施工工艺
+      - 基坑开挖
+      - 雨季施工
+      - 排水
+      - 边坡稳定
+      - 钢筋笼
+      - 混凝土浇筑
+      - 机械成孔
+      - 声测管
     source_paths:
       - ["3 施工技术措施"]
       - ["3 施工技术措施", "3.1 施工方案概述"]
@@ -149,6 +185,17 @@ chapters:
     include_in_toc: true
     template: chapter_4.md.j2
     data_file: data/4&5.json
+    rewrite_enabled: true
+    rewrite_topics:
+      - 施工组织
+      - 资源配置
+      - 工期计划
+      - 班组
+      - 人员配置
+      - 运输组织
+      - 机械进退场
+      - 材料配送
+      - 组织机构
     source_paths:
       - ["4 施工组织措施"]
       - ["4 施工组织措施", "4.1 项目部组织机构"]
@@ -178,6 +225,17 @@ chapters:
     include_in_toc: true
     template: chapter_5.md.j2
     data_file: data/4&5.json
+    rewrite_enabled: true
+    rewrite_topics:
+      - 安全管理
+      - 风险分析
+      - 文明施工
+      - 围挡
+      - 夜间施工
+      - 临时用电
+      - 环保水保
+      - 安全职责
+      - 山地施工
     source_paths:
       - ["5 安全管理措施"]
       - ["5 安全管理措施", "5.1 风险分析识别、评估及控制"]
@@ -223,3 +281,197 @@ chapters:
       risk_table_8:
         path: ["5 安全管理措施", "5.1 风险分析识别、评估及控制"]
         content_index: 7
+
+  - id: chapter_6
+    title: 6 质量控制措施
+    enabled: true
+    include_in_toc: true
+    template: chapter_6.md.j2
+    data_file: data/6.json
+    rewrite_enabled: true
+    rewrite_topics:
+      - 质量控制
+      - 质量通病
+      - 强制性条文
+      - 质量缺陷
+      - 标准工艺
+      - 成品保护
+      - 质量验收
+      - 质量问题
+    source_paths:
+      - ["6 质量控制措施"]
+      - ["6 质量控制措施", "6.1 质量通病防治及措施"]
+      - ["6 质量控制措施", "6.2 强制性条文落实情况"]
+      - ["6 质量控制措施", "6.3 基础工程常见质量问题及要求"]
+      - ["6 质量控制措施", "6.4 常见缺陷处理办法"]
+      - ["6 质量控制措施", "6.5 标准工艺施工要求"]
+    toc_entries:
+      - "6 质量控制措施"
+      - "6.1 质量通病防治及措施"
+      - "6.2 强制性条文落实情况"
+      - "6.2.1 强制性条文实施原则"
+      - "6.2.2 强条执行情况报告及实施总结"
+      - "6.3 基础工程常见质量问题及要求"
+      - "6.3.1 钢筋直螺纹加工不规范，焊接质量不满足要求"
+      - "6.3.2 地脚螺栓无标记"
+      - "6.3.3 钢筋保护层厚度不满足要求"
+      - "6.3.4 基础及保护帽浇制质量问题"
+      - "6.3.5 地脚螺栓露高不满足设计要求"
+      - "6.3.6 成品保护不到位，基础及保护帽棱角磕碰、损伤"
+      - "6.4 常见缺陷处理办法"
+      - "6.4.1 缺陷及其处理办法"
+      - "6.4.2 其他质量要求"
+      - "6.5 标准工艺施工要求"
+      - "6.5.1 标准工艺施工要点"
+      - "6.5.1.1 允许偏差"
+      - "6.5.2 标准工艺示范"
+    source_blocks:
+      quality_common_defect_table:
+        path: ["6 质量控制措施", "6.1 质量通病防治及措施", "表 6-1 质量通病防治内容"]
+        render_node: true
+      mandatory_principles:
+        path: ["6 质量控制措施", "6.2 强制性条文落实情况", "6.2.1 强制性条文实施原则"]
+      mandatory_summary:
+        path: ["6 质量控制措施", "6.2 强制性条文落实情况", "6.2.2 强条执行情况报告及实施总结"]
+      issue_631:
+        path: ["6 质量控制措施", "6.3 基础工程常见质量问题及要求", "6.3.1 钢筋直螺纹加工不规范，焊接质量不满足要求"]
+      issue_632:
+        path: ["6 质量控制措施", "6.3 基础工程常见质量问题及要求", "6.3.2 地脚螺栓无标记"]
+      issue_633:
+        path: ["6 质量控制措施", "6.3 基础工程常见质量问题及要求", "6.3.3 钢筋保护层厚度不满足要求"]
+      issue_634:
+        path: ["6 质量控制措施", "6.3 基础工程常见质量问题及要求", "6.3.4 基础及保护帽浇制质量问题"]
+      issue_635:
+        path: ["6 质量控制措施", "6.3 基础工程常见质量问题及要求", "6.3.5 地脚螺栓露高不满足设计要求"]
+      issue_636:
+        path: ["6 质量控制措施", "6.3 基础工程常见质量问题及要求", "6.3.6 成品保护不到位，基础及保护帽棱角磕碰、损伤"]
+      defect_handling_table:
+        path: ["6 质量控制措施", "6.4 常见缺陷处理办法", "6.4.1 缺陷及其处理办法"]
+        render_node: true
+      other_quality_requirements:
+        path: ["6 质量控制措施", "6.4 常见缺陷处理办法", "6.4.2 其他质量要求"]
+      standard_process_points:
+        path: ["6 质量控制措施", "6.5 标准工艺施工要求", "1 标准工艺施工要点"]
+      standard_process_tolerance:
+        path: ["6 质量控制措施", "6.5 标准工艺施工要求", "1 标准工艺施工要点", "允许偏差"]
+        render_node: true
+
+  - id: chapter_7
+    title: 7 应急处置方案
+    enabled: true
+    include_in_toc: true
+    template: chapter_7.md.j2
+    data_file: data/7.json
+    rewrite_enabled: true
+    rewrite_topics:
+      - 应急处置
+      - 应急组织
+      - 报警
+      - 抢险救援
+      - 事故处置
+      - 应急物资
+      - 通讯录
+      - 医院
+      - 火灾爆炸
+      - 坍塌
+      - 触电
+      - 中毒窒息
+    source_paths:
+      - ["7 应急处置方案"]
+      - ["7 应急处置方案", "7.1 组织机构"]
+      - ["7 应急处置方案", "7.2 预防及应急措施"]
+      - ["7 应急处置方案", "7.3 现场事故（事件）处理"]
+    toc_entries:
+      - "7 应急处置方案"
+      - "7.1 组织机构"
+      - "7.1.1 应急组织机构"
+      - "7.1.2 现场应急工作组"
+      - "7.2 预防及应急措施"
+      - "7.2.1 危险点监控"
+      - "7.2.2 信息报告与处置"
+      - "7.2.2.1 报警"
+      - "7.2.2.2 内部报警"
+      - "7.2.2.3 外部报警"
+      - "7.2.3 应急救援物资"
+      - "7.3 现场事故（事件）处理"
+      - "7.3.1 人身事件现场应急处置"
+      - "7.3.2 坍塌事故现场应急处置"
+      - "7.3.3 火灾爆炸事故处置"
+      - "7.3.4 高处摔跌"
+      - "7.3.5 物体打击"
+      - "7.3.6 触电事故"
+      - "7.3.7 中毒/窒息"
+      - "7.3.8 机械设备事故"
+      - "7.3.9 交通事故"
+      - "7.3.10 环境污染事件"
+    source_blocks:
+      risk_monitoring:
+        path: ["7 应急处置方案", "7.2 预防及应急措施", "7.2.1 危险点监控"]
+      reporting_overview:
+        path: ["7 应急处置方案", "7.2 预防及应急措施", "7.2.2 信息报告与处置"]
+      alarm_internal:
+        path: ["7 应急处置方案", "7.2 预防及应急措施", "7.2.2 信息报告与处置", "(1) 报警"]
+      alarm_notice:
+        path: ["7 应急处置方案", "7.2 预防及应急措施", "7.2.2 信息报告与处置", "(2) 内部报警"]
+      alarm_external:
+        path: ["7 应急处置方案", "7.2 预防及应急措施", "7.2.2 信息报告与处置", "(3) 外部报警"]
+      event_intro:
+        path: ["7 应急处置方案", "7.3 现场事故（事件）处理"]
+      event_731:
+        path: ["7 应急处置方案", "7.3 现场事故（事件）处理", "7.3.1 人身事件现场应急处置"]
+      event_732:
+        path: ["7 应急处置方案", "7.3 现场事故（事件）处理", "7.3.2 坍塌事故现场应急处置"]
+      event_733:
+        path: ["7 应急处置方案", "7.3 现场事故（事件）处理", "7.3.3 火灾爆炸事故处置"]
+      event_734:
+        path: ["7 应急处置方案", "7.3 现场事故（事件）处理", "7.3.4 高处摔跌"]
+      event_735:
+        path: ["7 应急处置方案", "7.3 现场事故（事件）处理", "7.3.5 物体打击"]
+      event_736:
+        path: ["7 应急处置方案", "7.3 现场事故（事件）处理", "7.3.6 触电事故"]
+      event_737:
+        path: ["7 应急处置方案", "7.3 现场事故（事件）处理", "7.3.7 中毒/窒息"]
+      event_738:
+        path: ["7 应急处置方案", "7.3 现场事故（事件）处理", "7.3.8 机械设备事故"]
+      event_739:
+        path: ["7 应急处置方案", "7.3 现场事故（事件）处理", "7.3.9 交通事故"]
+      event_7310:
+        path: ["7 应急处置方案", "7.3 现场事故（事件）处理", "7.3.10 环境污染事件"]
+
+  - id: chapter_8
+    title: 8 环保水保措施
+    enabled: true
+    include_in_toc: true
+    template: chapter_8.md.j2
+    data_file: data/8.json
+    rewrite_enabled: true
+    rewrite_topics:
+      - 环境保护
+      - 水环境
+      - 水土保持
+      - 环保水保
+      - 弃土
+      - 植被恢复
+      - 污水
+      - 水保
+      - 环保
+    source_paths:
+      - ["8 环保水保措施"]
+      - ["8 环保水保措施", "8.1 环境保护措施"]
+      - ["8 环保水保措施", "8.2 水环境保护措施"]
+      - ["8.3 水土保持措施"]
+    toc_entries:
+      - "8 环保水保措施"
+      - "8.1 环境保护措施"
+      - "8.2 水环境保护措施"
+      - "8.2.1 水环境防治措施"
+      - "8.3 水土保持措施"
+    source_blocks:
+      environmental_protection:
+        path: ["8 环保水保措施", "8.1 环境保护措施"]
+      water_environment_intro:
+        path: ["8 环保水保措施", "8.2 水环境保护措施"]
+      water_environment_measures:
+        path: ["8 环保水保措施", "8.2 水环境保护措施", "水环境防治措施"]
+      soil_and_water_conservation:
+        path: ["8.3 水土保持措施"]

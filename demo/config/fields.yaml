@@ -1,4 +1,4 @@
-﻿groups:
+groups:
   - id: basic_info
     title: 工程基本信息
     description: 这些字段会复用到封面、编制说明和工程概况。
@@ -302,7 +302,7 @@
 
   - id: organization_plan
     title: 施工组织与工期参数
-    description: 第4章使用的组织与进度参数，默认值已给出，可按项目实际调整。
+    description: 第 4 章使用的组织与进度参数，默认值已给出，可按项目实际调整。
     expanded: false
     fields:
       - id: construction_team_count
@@ -321,9 +321,60 @@
         required: true
         default: 2026年08月
 
+  - id: emergency_tables
+    title: 应急处置表格
+    description: 第 7 章使用，可根据项目实际修改联系人、医院和应急物资清单。
+    expanded: false
+    fields:
+      - id: emergency_contact_table
+        label: 7.1.1 应急救援小组人员通讯录
+        type: markdown_table
+        required: true
+        height: 320
+        default: |
+          | 序号 | 姓名 | 单位 | 职务 | 联系电话 |
+          | --- | --- | --- | --- | --- |
+          | 1 | 待补充 | 项目经理 | 现场应急领导小组组长 | 待补充 |
+          | 2 | 待补充 | 项目副经理 | 现场应急领导小组副组长 | 待补充 |
+          | 3 | 待补充 | 项目总工 | 现场应急领导小组成员 | 待补充 |
+          | 4 | 待补充 | 工程部部长 | 现场应急小队长 | 待补充 |
+          | 5 | 待补充 | 施工班组负责人 | 现场应急小队长 | 待补充 |
+          | 6 | 待补充 | 安全员 | 现场应急小队长 | 待补充 |
+          | 7 | 待补充 | 施工班组负责人 | 现场应急小队长 | 待补充 |
+          | 8 | 待补充 | 材料站 | 材料站应急小队长 | 待补充 |
+      - id: nearby_hospital_table
+        label: 7.1.1 附近医院电话
+        type: markdown_table
+        required: true
+        height: 220
+        default: |
+          | 序号 | 医院名称 | 医院地址 | 联系电话 |
+          | --- | --- | --- | --- |
+          | 1 | 待补充 | 待补充 | 待补充 |
+          | 2 | 待补充 | 待补充 | 待补充 |
+          | 3 | 待补充 | 待补充 | 待补充 |
+      - id: emergency_liaison_table
+        label: 7.1.1 应急处理联络员
+        type: markdown_table
+        required: true
+        height: 140
+        default: |
+          | 单位 | 联系人 | 联系电话 |
+          | --- | --- | --- |
+          | 公司应急办公室 | 待补充 | 待补充 |
+      - id: emergency_supplies_table
+        label: 7.2.3 应急救援物资
+        type: markdown_table
+        required: true
+        height: 520
+        source_ref:
+          data_file: data/7.json
+          path: ["7 应急处置方案", "7.2 预防及应急措施", "7.2.3 应急救援物资"]
+          render_node: true
+
   - id: tables
     title: 可编辑表格
-    description: 默认值来自 data/2.json，可直接修改 Markdown 表格后参与生成。
+    description: 默认值来自源数据，可直接修改 Markdown 表格后参与生成。
     expanded: false
     fields:
       - id: foundation_technical_parameters_table
@@ -351,4 +402,3 @@
           | 6 | 振捣工 | 0 | 2 | 2 |
           | 7 | 其他施工人员 | 0 | 6 | 6 |
           | 8 | 总计 | 4 | 8 | 12 |
-
