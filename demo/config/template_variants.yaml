@@ -1,0 +1,24 @@
+default_variant: a
+
+variants:
+  - id: a
+    label: 模板A
+    style_title: 规范严谨
+    scenario: 适合正式报审、对外提交和标准化审批场景。
+    style_summary: 结构严谨、措辞正式、偏报审口径，强调规范依据、管理要求和工程参数的完整表达。
+    length_bias: 正式稳妥
+    rewrite_style_prompt: 保持正式、稳妥、规范化的报审文风，优先使用制度化、书面化表述。
+  - id: b
+    label: 模板B
+    style_title: 均衡通用
+    scenario: 适合常规内部流转、专业会审和一般评审场景。
+    style_summary: 保持专业准确，但句式更均衡、阅读更顺，兼顾审批使用和内部沟通效率。
+    length_bias: 均衡适中
+    rewrite_style_prompt: 保持专业、清晰、均衡的技术文风，兼顾正式性与可读性，不要过度堆叠管理化口径。
+  - id: c
+    label: 模板C
+    style_title: 执行展开
+    scenario: 适合施工交底、现场执行说明和班组落实场景。
+    style_summary: 更强调现场组织、工序衔接、检查动作和执行要点，体现可操作性和落地感。
+    length_bias: 展开更强
+    rewrite_style_prompt: 保持执行导向、工序导向的文风，突出现场动作、检查点和落实要求，但仍需专业正式。

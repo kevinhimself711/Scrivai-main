@@ -1,0 +1,86 @@
+## 2 工程概况
+
+### 2.1 工程概述
+
+#### （1）线路部分
+
+1、{{ start_station }}～{{ end_station }}{{ project_voltage_level }}线路工程{{ project_alias }}：新建{{ start_station }}～{{ end_station }}{{ project_voltage_level }}双回线路，新建线路{{ line_length_km }}千米（其中{{ segment_label }}共{{ same_tower_section_length_km }}km），按同塔双回路架设。导线采用{{ conductor_model }}。
+
+#### （2）通信部分
+
+1、{{ start_station }}～{{ end_station }}{{ project_voltage_level }}线路工程OPGW{{ communication_project_alias }}：在{{ start_station }}～{{ end_station }}新建双回{{ project_voltage_level }}线路上架设{{ opgw_quantity }}根{{ opgw_core_count }}芯（G.652纤芯）OPGW光缆（其中{{ segment_label }}共{{ opgw_length_km }}km）。
+
+其他工程量如下：共计{{ fault_locator_count }}套精确故障定位装置，{{ fire_monitor_count }}套山火在线监测装置，{{ bird_guard_total_count }}套人工鸟笼（每基塔{{ bird_guard_per_tower }}套，地线横担{{ bird_guard_crossarm }}套，塔身{{ bird_guard_body }}套）。
+
+{{ segment_label }}自{{ tower_start_no }}塔起（不含），至{{ tower_end_no }}塔止（含），线路途经{{ route_area }}。本标段新建杆塔{{ tower_total }}基，含耐张塔{{ strain_tower_count }}基，直线塔{{ straight_tower_count }}基。机械挖孔桩基础按设计共{{ mechanical_foundation_count }}基整。
+
+本工程双回路线，沿线主要跨越有：{{ major_crossings }}。工程建设单位为{{ owner_full_name }}，监理单位为{{ supervision_unit }}，设计单位为{{ design_unit }}，施工单位为{{ construction_unit }}。计划{{ planned_start_date }}开工，{{ planned_end_date }}竣工。
+
+### 2.2 地形情况
+
+本标段沿线地形以山地、高山为主，施工组织需要兼顾山区运输、机械转场和塔位分散施工等特点。
+
+| 地形类别 | 高山 | 山地 | 合计 |
+| --- | --- | --- | --- |
+| 百分比(%) | {{ high_mountain_ratio }} | {{ mountain_ratio }} | {{ terrain_total_ratio }} |
+
+#### 2.2.1 沿线岩土工程条件
+
+{{ project_title }}沿线主要为低山、丘陵地貌。低山段海拔约{{ low_mountain_elevation_range }}，地形坡度一般为{{ low_mountain_slope }}；丘陵段海拔约{{ hill_elevation_range }}，地形坡度一般为{{ hill_slope }}。
+
+上覆土层主要为第四系坡残积粉质黏土、砂质黏性土，厚度一般{{ soil_thickness_range }}，承载力特征值为{{ soil_bearing_capacity_range }}。下伏基岩按风化程度可划分为全风化、强风化和中等风化三个等级，其中全风化至强风化层总厚度一般大于{{ weathered_thickness_range }}，承载力特征值一般为{{ weathered_capacity_range }}；中等风化层承载力特征值为{{ medium_weathered_capacity_range }}。
+
+### 2.3 交通情况
+
+本线路沿线可利用县道、乡道较多，总体交通条件较好，但部分山区塔位仍需结合便道修整、材料倒运和机械进退场计划进行专项组织。根据 demo 范围，原始施工道路规划图暂不展示。
+
+### 2.4 挖孔基础技术参数
+
+本工程有机械挖孔基础{{ mechanical_foundation_count }}基，机械挖孔基础型号及技术参数如下表：
+
+{{ foundation_technical_parameters_table }}
+
+### 2.5 施工平面布置图
+
+基础施工现场应结合地形和作业面条件布置材料堆放区、机械作业区、临时用电区和安全文明施工区域。根据本次 demo 范围，原始施工平面布置图暂不展示。
+
+### 2.6 施工说明
+
+#### 2.6.1 线路方向及铁塔编号
+
+本工程杆塔以设计杆号为施工号，铁塔基础及塔腿编号以面向前进方向（即杆塔号递增方向）为准，面向大号分左右。左后腿开始顺时针方向转动分别为 A、B、C、D。根据本次 demo 范围，原始示意图暂不展示。
+
+#### 2.6.2 施工基面
+
+(1) 本工程采用 1985 年国家高程系统，施工基面以设计给定的塔位中心处高程为基准。定位高差为正，则基础中心地面较中心桩高；为负则低于中心桩。
+
+(2) 基础施工中要严格遵循《基础配置表》中“基础中心与中心桩高差”的要求。如与实际地形不符或出现“平地挖坑”现象，应及时报送项目部，并由项目部协调设计单位妥善处理。
+
+(3) 基坑回填高度应使基础外露低于《基础配置图》中“自由长”的要求。
+
+(4) 基础中心与中心桩高差、基础出土高度等见各塔位基础配置表。相关名词解释如下：
+
+- 塔位中心桩：铁塔所在位置的中心桩点。
+- “基础出土高度”是指基础中心地面高程与基础顶面高程差值。
+- “基础中心与中心桩高差”是指基础中心地面高程与杆塔中心桩高程差值。
+- “基础埋深”是指基础中心地面高程与基础底面高程差值。
+- “基础根开”是指每个腿的基础全根开。
+
+#### 2.6.3 钢筋焊接、连接及保护层
+
+挖孔桩基础钢筋接头可采用双面搭接焊，也可采用机械连接，并应保证接头连接强度不低于主筋强度。本工程挖孔桩基础主筋连接方式为直螺纹套筒机械连接及焊接。
+
+HRB400 钢筋焊接采用 E55 型焊条，HPB300 钢筋焊接采用 E43 型焊条，HRB400 与 HPB300 钢筋焊接采用 E43 型焊条。
+
+主筋采用机械连接方式时，套筒两端露丝均不得超过两丝，涉及钢筋直径及对应安装扭矩如下表：
+
+{{ source_blocks.torque_table }}
+
+挖孔桩主筋混凝土保护层厚度均为{{ main_cover_mm }}mm，桩底保护层厚度为{{ bottom_cover_mm }}mm，桩顶保护层厚度为{{ top_cover_mm }}mm。
+
+#### 2.6.4 箱筋安装要求
+
+1. 自柱顶向下{{ hoop_zone_multiplier }}倍桩径范围内的外钢箍按间距{{ hoop_spacing_mm }}mm均匀布置，变截面处及其上下各{{ hoop_extra_zone_mm }}mm处各布置一道外箍筋，其余外箍筋均匀布置；主筋顶端和底端各布置一道内箍筋，其余内箍筋均匀布置。
+2. 护板自桩底{{ shield_plate_start_mm }}mm开始向上每{{ shield_plate_spacing_mm }}mm设置一层，一层四个并与主筋绑牢。
+3. 圆形内箍筋接头采用搭接焊，并与每根主筋点焊或绑扎。
+4. 十字内撑与内筛筋点焊或绑扎。

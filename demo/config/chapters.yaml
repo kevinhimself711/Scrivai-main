@@ -3,7 +3,10 @@ chapters:
     title: 封面
     enabled: true
     include_in_toc: false
-    template: cover.md.j2
+    templates:
+      a: cover.md.j2
+      b: cover_b.md.j2
+      c: cover_c.md.j2
     data_file: data/2.json
     rewrite_enabled: false
     source_paths:
@@ -14,7 +17,10 @@ chapters:
     title: 审批页
     enabled: true
     include_in_toc: false
-    template: approval.md.j2
+    templates:
+      a: approval.md.j2
+      b: approval_b.md.j2
+      c: approval_c.md.j2
     data_file: data/2.json
     rewrite_enabled: false
     source_paths:
@@ -24,7 +30,10 @@ chapters:
     title: 目录
     enabled: true
     include_in_toc: false
-    template: toc.md.j2
+    templates:
+      a: toc.md.j2
+      b: toc_b.md.j2
+      c: toc_c.md.j2
     data_file: data/2.json
     rewrite_enabled: false
     source_paths:
@@ -34,7 +43,10 @@ chapters:
     title: 1 编制说明
     enabled: true
     include_in_toc: true
-    template: chapter_1.md.j2
+    templates:
+      a: chapter_1.md.j2
+      b: chapter_1_b.md.j2
+      c: chapter_1_c.md.j2
     data_file: data/2.json
     rewrite_enabled: true
     rewrite_topics:
@@ -68,7 +80,10 @@ chapters:
     title: 2 工程概况
     enabled: true
     include_in_toc: true
-    template: chapter_2.md.j2
+    templates:
+      a: chapter_2.md.j2
+      b: chapter_2_b.md.j2
+      c: chapter_2_c.md.j2
     data_file: data/2.json
     rewrite_enabled: true
     rewrite_topics:
@@ -117,9 +132,12 @@ chapters:
     title: 3 施工技术措施
     enabled: true
     include_in_toc: true
-    template: chapter_3.md.j2
+    templates:
+      a: chapter_3.md.j2
+      b: chapter_3_b.md.j2
+      c: chapter_3_c.md.j2
     data_file: data/3.json
-    rewrite_enabled: true
+    rewrite_enabled: false
     rewrite_topics:
       - 施工技术
       - 施工工艺
@@ -183,7 +201,10 @@ chapters:
     title: 4 施工组织措施
     enabled: true
     include_in_toc: true
-    template: chapter_4.md.j2
+    templates:
+      a: chapter_4.md.j2
+      b: chapter_4_b.md.j2
+      c: chapter_4_c.md.j2
     data_file: data/4&5.json
     rewrite_enabled: true
     rewrite_topics:
@@ -223,7 +244,10 @@ chapters:
     title: 5 安全管理措施
     enabled: true
     include_in_toc: true
-    template: chapter_5.md.j2
+    templates:
+      a: chapter_5.md.j2
+      b: chapter_5_b.md.j2
+      c: chapter_5_c.md.j2
     data_file: data/4&5.json
     rewrite_enabled: true
     rewrite_topics:
@@ -286,7 +310,10 @@ chapters:
     title: 6 质量控制措施
     enabled: true
     include_in_toc: true
-    template: chapter_6.md.j2
+    templates:
+      a: chapter_6.md.j2
+      b: chapter_6_b.md.j2
+      c: chapter_6_c.md.j2
     data_file: data/6.json
     rewrite_enabled: true
     rewrite_topics:
@@ -360,7 +387,10 @@ chapters:
     title: 7 应急处置方案
     enabled: true
     include_in_toc: true
-    template: chapter_7.md.j2
+    templates:
+      a: chapter_7.md.j2
+      b: chapter_7_b.md.j2
+      c: chapter_7_c.md.j2
     data_file: data/7.json
     rewrite_enabled: true
     rewrite_topics:
@@ -442,7 +472,10 @@ chapters:
     title: 8 环保水保措施
     enabled: true
     include_in_toc: true
-    template: chapter_8.md.j2
+    templates:
+      a: chapter_8.md.j2
+      b: chapter_8_b.md.j2
+      c: chapter_8_c.md.j2
     data_file: data/8.json
     rewrite_enabled: true
     rewrite_topics:

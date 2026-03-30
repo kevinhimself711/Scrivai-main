@@ -13,11 +13,16 @@ from jinja2 import meta
 
 from core.llm import LLMClient, LLMConfig
 from demo.config_loader import (
+    get_default_template_variant_id,
     get_enabled_chapters,
     get_field_map,
+    get_template_variant,
+    get_template_variants_meta,
     iter_field_defs,
     load_chapter_registry,
     load_field_schema,
+    load_template_variants,
+    resolve_chapter_template,
     resolve_repo_path,
     resolve_template_path,
 )
@@ -36,6 +41,8 @@ _STYLE_TOKENS = {
     "章节",
     "保持",
     "融入",
+    "风格",
+    "语气",
 }
 _DEFAULT_FALLBACK_REWRITE_IDS = ("chapter_1", "chapter_2")
 _DEFAULT_MODEL = "qwen3-max"
@@ -72,16 +79,24 @@ def build_initial_demo_inputs(
     return form_data, editable_tables
 
 
+def build_output_filename(template_variant: str) -> str:
+    """构造包含模板标识的下载文件名。"""
+    return f"line_project_demo_template_{template_variant}.md"
+
+
 def generate_demo_markdown(
     form_data: dict[str, Any],
     editable_tables: dict[str, str],
     enabled_chapters: list[str] | None = None,
     custom_requirements: str = "",
     llm_config: dict[str, Any] | None = None,
+    template_variant: str | None = None,
 ) -> str:
     """生成 demo Markdown 文档。"""
     field_schema = load_field_schema()
     chapter_registry = load_chapter_registry()
+    template_variant_config = load_template_variants()
+    selected_variant = get_template_variant(template_variant_config, template_variant)
     field_map = get_field_map(field_schema)
 
     normalized_form = _normalize_form_data(field_map, form_data)
@@ -98,17 +113,22 @@ def generate_demo_markdown(
             normalized_form.get("high_mountain_ratio", ""),
             normalized_form.get("mountain_ratio", ""),
         ),
+        "template_variant": selected_variant["id"],
+        "template_variant_label": selected_variant["label"],
+        "template_variant_style_title": selected_variant["style_title"],
+        "template_variant_style_summary": selected_variant["style_summary"],
     }
 
     fragments: list[dict[str, Any]] = []
     for chapter in chapters:
+        template_name = resolve_chapter_template(chapter, selected_variant["id"])
         context = dict(base_context)
         context["source_blocks"] = _resolve_source_blocks(chapter)
         fragments.append(
             {
                 "id": chapter["id"],
                 "title": chapter["title"],
-                "markdown": _render_fragment(chapter["template"], context),
+                "markdown": _render_fragment(template_name, context),
                 "rewrite_enabled": bool(chapter.get("rewrite_enabled", False)),
                 "rewrite_topics": chapter.get("rewrite_topics", []),
             }
@@ -119,6 +139,7 @@ def generate_demo_markdown(
             fragments=fragments,
             custom_requirements=custom_requirements,
             llm_config=llm_config or {},
+            template_variant_meta=selected_variant,
         )
 
     return "\n\n".join(
@@ -129,10 +150,12 @@ def generate_demo_markdown(
 def validate_template_context(
     schema: dict[str, Any] | None = None,
     registry: dict[str, Any] | None = None,
+    template_variants: dict[str, Any] | None = None,
 ) -> dict[str, list[str]]:
-    """检查模板变量是否都能在上下文中找到。"""
+    """检查模板变量是否都能在生成上下文中找到。"""
     schema = schema or load_field_schema()
     registry = registry or load_chapter_registry()
+    template_variants = template_variants or load_template_variants()
 
     env = jinja2.Environment()
     known_vars = {
@@ -140,15 +163,23 @@ def validate_template_context(
         "toc_entries",
         "terrain_total_ratio",
         "source_blocks",
+        "template_variant",
+        "template_variant_label",
+        "template_variant_style_title",
+        "template_variant_style_summary",
     }
 
     missing: dict[str, list[str]] = {}
     for chapter in registry.get("chapters", []):
-        template_source = resolve_template_path(chapter["template"]).read_text(encoding="utf-8")
-        parsed = env.parse(template_source)
-        undeclared = sorted(meta.find_undeclared_variables(parsed) - known_vars)
-        if undeclared:
-            missing[chapter["id"]] = undeclared
+        for variant in get_template_variants_meta(template_variants):
+            variant_id = variant["id"]
+            template_source = resolve_template_path(
+                resolve_chapter_template(chapter, variant_id)
+            ).read_text(encoding="utf-8")
+            parsed = env.parse(template_source)
+            undeclared = sorted(meta.find_undeclared_variables(parsed) - known_vars)
+            if undeclared:
+                missing[f"{chapter['id']}:{variant_id}"] = undeclared
     return missing
 
 
@@ -232,6 +263,7 @@ def _apply_custom_requirements_to_fragments(
     fragments: list[dict[str, Any]],
     custom_requirements: str,
     llm_config: dict[str, Any],
+    template_variant_meta: dict[str, Any],
 ) -> list[dict[str, Any]]:
     target_indexes = _select_rewrite_target_indexes(fragments, custom_requirements, llm_config)
     if not target_indexes:
@@ -245,6 +277,7 @@ def _apply_custom_requirements_to_fragments(
             chapter_title=fragment["title"],
             chapter_markdown=fragment["markdown"],
             custom_requirements=custom_requirements,
+            template_variant_meta=template_variant_meta,
         )
         return index, rewritten
 
@@ -392,19 +425,26 @@ def _apply_custom_requirements(
     chapter_title: str,
     chapter_markdown: str,
     custom_requirements: str,
+    template_variant_meta: dict[str, Any],
 ) -> str:
     prompt = """
-你是电力线路工程施工方案编辑助手。请只改写当前章节，把与当前章节相关的客制化要求自然融入现有表述。
+你是电力线路工程施工方案编辑助手。请只改写当前章节，把与当前章节直接相关的客制化要求自然融入现有表述。
+
+当前选中的模板风格信息如下：
+- 模板名称：{{ template_variant_label }}
+- 风格标题：{{ template_variant_style_title }}
+- 风格说明：{{ template_variant_style_summary }}
+- 改写保持要求：{{ template_variant_rewrite_style_prompt }}
 
 绝对要求：
 1. 只输出当前章节，不新增、删除、合并章节。
 2. 必须完整保留现有 Markdown 标题层级、表格结构、工程数据和编号顺序，不得省略任何原有小节、列表项或表格。
-3. 只处理与当前章节直接相关的要求；如果客户要求与本章节关系不大，只做最小必要融入。
-4. 若客制化要求包含明确主题词，例如“雨季施工”“环保水保”“山区运输”“边坡稳定”“夜间施工”“质量控制”“应急处置”，请在相关段落中明确体现这些主题词或其正式同义表述，不要只写成笼统概括。
-5. 不输出解释、前后缀、代码块或“修改说明”。
+3. 只处理与当前章节直接相关的要求；如果客户要求与本章节关系不大，只做最小必要融合。
+4. 改写时必须保留当前所选模板的语气、展开方式、组织结构和写作风格，不得把 {{ template_variant_label }} 改写成其他模板口气。
+5. 若客制化要求包含明确主题词，例如“雨季施工”“环保水保”“山区运输”“边坡稳定”“夜间施工”“质量控制”“应急处置”，请在相关段落中明确体现这些主题词或其正式同义表达，不要只写成笼统概括。
+6. 不输出解释、前后缀、代码块或“修改说明”。
 
-当前章节标题：
-{{ chapter_title }}
+当前章节标题：{{ chapter_title }}
 
 客制化要求：
 {{ custom_requirements }}
@@ -418,6 +458,10 @@ def _apply_custom_requirements(
             "chapter_title": chapter_title,
             "custom_requirements": custom_requirements.strip(),
             "chapter_markdown": chapter_markdown,
+            "template_variant_label": template_variant_meta["label"],
+            "template_variant_style_title": template_variant_meta["style_title"],
+            "template_variant_style_summary": template_variant_meta["style_summary"],
+            "template_variant_rewrite_style_prompt": template_variant_meta["rewrite_style_prompt"],
         },
     )
     rewritten = _CODE_FENCE_PATTERN.sub("", response).strip()
@@ -464,5 +508,9 @@ def load_llm_config_from_env() -> dict[str, Any]:
         "rewrite_concurrency": os.getenv(
             "REWRITE_CONCURRENCY",
             _DEFAULT_REWRITE_CONCURRENCY,
+        ),
+        "template_variant": os.getenv(
+            "TEMPLATE_VARIANT",
+            get_default_template_variant_id(load_template_variants()),
         ),
     }
