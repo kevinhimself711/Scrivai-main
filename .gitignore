@@ -6,9 +6,7 @@ checkpoints/
 __pycache__/
 *.pyc
 *.egg-info/
-.env
 .venv/
-.claude/
 .pytest_cache/
 .pytest_tmp/
 .DS_Store
@@ -16,10 +14,5 @@ logs/
 *.log
 Reference/
 
-# 用户数据目录
-data/
-custom/
-
-# 测试输出（生成的报告）
+# Test outputs
 tests/outputs/
-line_project_demo*.md
