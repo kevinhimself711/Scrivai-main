@@ -14,5 +14,8 @@ logs/
 *.log
 Reference/
 
+# 用户上传目录
+uploads/
+
 # Test outputs
 tests/outputs/
