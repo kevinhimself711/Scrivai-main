@@ -1,0 +1,1068 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>知识库层构建</title>
+  <style>
+    :root {
+      --bg:#f7f3ea; --paper:#fffdf7; --ink:#1f2d2a; --muted:#63736d;
+      --line:#deceaa; --accent:#587f6f; --agent:#d9ead3; --strategy:#eadcf8;
+      --decision:#ddf4ff; --sdk:#efe6d2; --output:#ddefd5;
+      --store:#ddebf7; --input:#fce4d6;
+    }
+    * { box-sizing:border-box; }
+    body {
+      margin:0; background:radial-gradient(circle at top left,#fff7df 0,var(--bg) 42%,#f3efe5 100%);
+      color:var(--ink); font-family:"Microsoft YaHei","Noto Sans CJK SC","Source Han Sans SC",sans-serif;
+    }
+    main { max-width:1680px; margin:0 auto; padding:30px 26px 42px; }
+    header { display:flex; justify-content:space-between; gap:22px; align-items:flex-start; margin-bottom:18px; }
+    h1 { margin:0 0 8px; font-size:30px; letter-spacing:.02em; }
+    p { margin:0; color:var(--muted); line-height:1.75; }
+    a { color:var(--accent); font-weight:700; text-decoration:none; }
+    .page-link { flex:0 0 auto; border:1px solid var(--line); border-radius:999px; padding:9px 14px; background:#fffaf0; }
+    .layout { display:grid; grid-template-columns:minmax(0,1fr) 420px; gap:18px; align-items:start; }
+    .graph-panel,.detail-panel { background:color-mix(in srgb,var(--paper) 94%,white); border:1px solid var(--line); border-radius:22px; box-shadow:0 18px 50px rgb(58 47 26 / 10%); }
+    .graph-panel { padding:16px; min-width:0; }
+    .toolbar { display:flex; gap:10px; align-items:center; margin-bottom:10px; flex-wrap:wrap; }
+    .tool-button { border:1px solid var(--line); border-radius:12px; background:#fff8e8; color:var(--ink); padding:8px 11px; cursor:pointer; font-weight:700; }
+    .zoom-readout { color:var(--accent); font-weight:800; min-width:52px; text-align:right; margin-left:auto; }
+    .scope-note { margin:0 0 12px; padding:12px 14px; border:1px solid #e7d8b6; border-radius:16px; background:#fff7ea; color:#365148; font-weight:700; line-height:1.7; }
+    .legend { display:flex; flex-wrap:wrap; gap:10px 14px; margin:0 0 14px; padding:10px 12px; border:1px solid #eadbb8; border-radius:16px; background:#fffaf0; }
+    .legend-item { display:inline-flex; align-items:center; gap:8px; color:var(--muted); font-size:13px; }
+    .legend-chip { width:12px; height:12px; border-radius:999px; border:1px solid rgb(0 0 0 / 16%); display:inline-block; }
+    .legend-chip.agentic { background:var(--agent); } .legend-chip.strategy { background:var(--strategy); }
+    .legend-chip.decision { background:var(--decision); } .legend-chip.sdk { background:var(--sdk); }
+    .legend-chip.output { background:var(--output); }
+    .legend-chip.input { background:var(--input); } .legend-chip.store { background:var(--store); }
+    .graph-window { position:relative; height:76vh; min-height:620px; overflow:hidden; border:1px solid #e7d8b6; border-radius:18px; background:linear-gradient(180deg,#fffdf6,#f8f1df); cursor:grab; touch-action:none; }
+    .graph-window.is-dragging { cursor:grabbing; }
+    .graph-canvas { position:absolute; left:0; top:0; transform-origin:0 0; will-change:transform; min-width:320px; min-height:320px; }
+    .graph-canvas svg { display:block; width:1200px; height:auto; max-width:none!important; background:transparent!important; font-family:"Microsoft YaHei","SimHei","Noto Sans CJK SC",sans-serif!important; }
+    .graph-canvas svg text,.graph-canvas svg tspan,.graph-canvas svg foreignObject div,.graph-canvas svg foreignObject span {
+      font-family:"Microsoft YaHei","SimHei","Noto Sans CJK SC",sans-serif!important; line-height:1.18!important;
+    }
+    .graph-canvas svg .node { cursor:pointer; }
+    .graph-canvas svg .node:hover rect,.graph-canvas svg .node:hover polygon,.graph-canvas svg .node:hover path {
+      stroke:#8c6d2d!important; stroke-width:2.4px!important;
+    }
+    .graph-canvas svg .node.adjacent-node rect,.graph-canvas svg .node.adjacent-node polygon,.graph-canvas svg .node.adjacent-node path {
+      filter:none;
+    }
+    .graph-canvas svg [data-edge="true"].adjacent-edge {
+      stroke-width:4px!important; opacity:1!important;
+    }
+    .graph-canvas svg [data-edge="true"].adjacent-sdk-edge {
+      stroke-width:4px!important; opacity:1!important;
+    }
+    .graph-canvas svg .node.selected-node rect,.graph-canvas svg .node.selected-node polygon,.graph-canvas svg .node.selected-node path {
+      stroke:#c44f35!important; stroke-width:3px!important; filter:drop-shadow(0 0 5px rgb(196 79 53 / 30%));
+    }
+    .graph-canvas svg .node-highlight-ring { pointer-events:none; fill:none!important; vector-effect:non-scaling-stroke; }
+    .graph-source { padding:18px; overflow:auto; white-space:pre; background:#fff7e8; border-radius:16px; border:1px dashed var(--line); }
+    .detail-panel { position:sticky; top:18px; padding:20px; min-height:620px; max-height:86vh; overflow-y:auto; overflow-x:hidden; scrollbar-gutter:stable; }
+    .detail-panel h2 { margin:0 0 10px; font-size:23px; }
+    .badge-row { display:flex; flex-wrap:wrap; gap:7px; margin-bottom:16px; }
+    .badge { display:inline-flex; align-items:center; border-radius:999px; padding:4px 9px; font-size:12px; border:1px solid rgb(0 0 0 / 10%); background:#f3efe5; color:var(--ink); }
+    .badge.agentic { background:var(--agent); } .badge.strategy { background:var(--strategy); }
+    .badge.decision { background:var(--decision); } .badge.sdk { background:var(--sdk); }
+    .badge.output { background:var(--output); }
+    .badge.input { background:var(--input); } .badge.store { background:var(--store); }
+    .detail-panel h3 { margin:18px 0 8px; color:var(--accent); font-size:15px; }
+    .detail-panel ul { margin:0; padding-left:20px; line-height:1.75; }
+    .detail-panel p { color:var(--ink); }
+    .node-ref-list { list-style:none; padding-left:0!important; display:flex; flex-wrap:wrap; gap:8px; line-height:1.2!important; }
+    .node-ref-list li { margin:0; padding:0; }
+    .node-ref { border:1px solid rgb(0 0 0 / 14%); border-radius:999px; color:var(--ink); cursor:pointer; font:inherit; font-size:13px; font-weight:700; padding:6px 10px; box-shadow:0 6px 14px rgb(58 47 26 / 8%); }
+    .node-ref:hover { outline:2px solid #ff8a00; outline-offset:2px; }
+    .node-ref.agentic { background:var(--agent); } .node-ref.strategy { background:var(--strategy); }
+    .node-ref.decision { background:var(--decision); } .node-ref.sdk { background:var(--sdk); }
+    .node-ref.output { background:var(--output); }
+    .node-ref.input { background:var(--input); } .node-ref.store { background:var(--store); }
+    .empty-note { color:var(--muted)!important; font-style:italic; }
+    .hint { color:var(--accent); font-weight:700; margin:0 0 12px; }
+    @media (max-width:1100px) {
+      .layout { grid-template-columns:1fr; } .detail-panel { position:static; min-height:auto; }
+      .toolbar { display:flex; }
+      header { display:block; } .page-link { display:inline-flex; margin-top:12px; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div><h1>知识库层构建</h1><p>从 Raw 原文和 Processed 章节树中沉淀参数槽、可复用段落、审核规则与证据链。</p></div>
+      <a class="page-link" href="agent_runtime_interactive.html">切换到 Agent 层流程图</a>
+    </header>
+    <div class="layout">
+      <section class="graph-panel">
+        <div class="toolbar">
+          <button class="tool-button" id="zoom-out">-</button>
+          <button class="tool-button" id="zoom-in">+</button>
+          <button class="tool-button" id="reset-view">重置</button>
+          <span class="zoom-readout" id="zoom-readout"></span>
+        </div>
+        <div class="scope-note">知识页按终态知识层表达：重点说明 Raw / Processed 如何沉淀为参数槽、可复用段落、模板资产、规则资产和证据资产，并通过 KnowledgeStore 服务后续编制与审核。</div>
+        <div class="legend" aria-label="图例"><span class="legend-item"><span class="legend-chip input"></span><span>输入资产</span></span><span class="legend-item"><span class="legend-chip agentic"></span><span>结构归一化 / 知识识别节点</span></span><span class="legend-item"><span class="legend-chip store"></span><span>专题知识资产</span></span><span class="legend-item"><span class="legend-chip sdk"></span><span>运行期入口 / 治理</span></span></div>
+        <p class="hint">点击节点更新右侧卡片；滚轮或键盘 +/- 缩放；按住图框拖拽只移动观察位置，不改变缩放比例。</p>
+        <div class="graph-window" id="graph-window"><div class="graph-canvas" id="graph-canvas"><svg id="knowledge-svg" width="100%" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" class="flowchart" style="max-width: 2380.81px; background-color: transparent;" viewBox="0 -1 2380.8125 524.5" role="graphics-document document" aria-roledescription="flowchart-v2"><style>#knowledge-svg{font-family:Microsoft YaHei,SimHei,Noto Sans CJK SC,sans-serif;font-size:13px;fill:#1f2d2a;}@keyframes edge-animation-frame{from{stroke-dashoffset:0;}}@keyframes dash{to{stroke-dashoffset:0;}}#knowledge-svg .edge-animation-slow{stroke-dasharray:9,5!important;stroke-dashoffset:900;animation:dash 50s linear infinite;stroke-linecap:round;}#knowledge-svg .edge-animation-fast{stroke-dasharray:9,5!important;stroke-dashoffset:900;animation:dash 20s linear infinite;stroke-linecap:round;}#knowledge-svg .error-icon{fill:hsl(284.347826087, 35.3846153846%, 92.2549019608%);}#knowledge-svg .error-text{fill:rgb(16.4076923077, 26.7384615384, 12.7615384615);stroke:rgb(16.4076923077, 26.7384615384, 12.7615384615);}#knowledge-svg .edge-thickness-normal{stroke-width:1px;}#knowledge-svg .edge-thickness-thick{stroke-width:3.5px;}#knowledge-svg .edge-pattern-solid{stroke-dasharray:0;}#knowledge-svg .edge-thickness-invisible{stroke-width:0;fill:none;}#knowledge-svg .edge-pattern-dashed{stroke-dasharray:3;}#knowledge-svg .edge-pattern-dotted{stroke-dasharray:2;}#knowledge-svg .marker{fill:#61736b;stroke:#61736b;}#knowledge-svg .marker.cross{stroke:#61736b;}#knowledge-svg svg{font-family:Microsoft YaHei,SimHei,Noto Sans CJK SC,sans-serif;font-size:13px;}#knowledge-svg p{margin:0;}#knowledge-svg .label{font-family:Microsoft YaHei,SimHei,Noto Sans CJK SC,sans-serif;color:#1f2d2a;}#knowledge-svg .cluster-label text{fill:rgb(16.4076923077, 26.7384615384, 12.7615384615);}#knowledge-svg .cluster-label span{color:rgb(16.4076923077, 26.7384615384, 12.7615384615);}#knowledge-svg .cluster-label span p{background-color:transparent;}#knowledge-svg .label text,#knowledge-svg span{fill:#1f2d2a;color:#1f2d2a;}#knowledge-svg .node rect,#knowledge-svg .node circle,#knowledge-svg .node ellipse,#knowledge-svg .node polygon,#knowledge-svg .node path{fill:#D9EAD3;stroke:#6A8F63;stroke-width:1px;}#knowledge-svg .rough-node .label text,#knowledge-svg .node .label text,#knowledge-svg .image-shape .label,#knowledge-svg .icon-shape .label{text-anchor:middle;}#knowledge-svg .node .katex path{fill:#000;stroke:#000;stroke-width:1px;}#knowledge-svg .rough-node .label,#knowledge-svg .node .label,#knowledge-svg .image-shape .label,#knowledge-svg .icon-shape .label{text-align:center;}#knowledge-svg .node.clickable{cursor:pointer;}#knowledge-svg .root .anchor path{fill:#61736b!important;stroke-width:0;stroke:#61736b;}#knowledge-svg .arrowheadPath{fill:#0b0b0b;}#knowledge-svg .edgePath .path{stroke:#61736b;stroke-width:1px;}#knowledge-svg .flowchart-link{stroke:#61736b;fill:none;}#knowledge-svg .edgeLabel{background-color:hsl(-15.652173913, 35.3846153846%, 87.2549019608%);text-align:center;}#knowledge-svg .edgeLabel p{background-color:hsl(-15.652173913, 35.3846153846%, 87.2549019608%);}#knowledge-svg .edgeLabel rect{opacity:0.5;background-color:hsl(-15.652173913, 35.3846153846%, 87.2549019608%);fill:hsl(-15.652173913, 35.3846153846%, 87.2549019608%);}#knowledge-svg .labelBkg{background-color:rgba(234, 211.0000000001, 217, 0.5);}#knowledge-svg .cluster rect{fill:#fffaf0;stroke:#decfaa;stroke-width:1px;}#knowledge-svg .cluster text{fill:rgb(16.4076923077, 26.7384615384, 12.7615384615);}#knowledge-svg .cluster span{color:rgb(16.4076923077, 26.7384615384, 12.7615384615);}#knowledge-svg div.mermaidTooltip{position:absolute;text-align:center;max-width:200px;padding:2px;font-family:Microsoft YaHei,SimHei,Noto Sans CJK SC,sans-serif;font-size:12px;background:hsl(284.347826087, 35.3846153846%, 92.2549019608%);border:1px solid hsl(284.347826087, 0%, 82.2549019608%);border-radius:2px;pointer-events:none;z-index:100;}#knowledge-svg .flowchartTitleText{text-anchor:middle;font-size:18px;fill:#1f2d2a;}#knowledge-svg rect.text{fill:none;stroke-width:0;}#knowledge-svg .icon-shape,#knowledge-svg .image-shape{background-color:hsl(-15.652173913, 35.3846153846%, 87.2549019608%);text-align:center;}#knowledge-svg .icon-shape p,#knowledge-svg .image-shape p{background-color:hsl(-15.652173913, 35.3846153846%, 87.2549019608%);padding:2px;}#knowledge-svg .icon-shape .label rect,#knowledge-svg .image-shape .label rect{opacity:0.5;background-color:hsl(-15.652173913, 35.3846153846%, 87.2549019608%);fill:hsl(-15.652173913, 35.3846153846%, 87.2549019608%);}#knowledge-svg .label-icon{display:inline-block;height:1em;overflow:visible;vertical-align:-0.125em;}#knowledge-svg .node .label-icon path{fill:currentColor;stroke:revert;stroke-width:revert;}#knowledge-svg .node .neo-node{stroke:#6A8F63;}#knowledge-svg [data-look="neo"].node rect,#knowledge-svg [data-look="neo"].cluster rect,#knowledge-svg [data-look="neo"].node polygon{stroke:url(#knowledge-svg-gradient);filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#knowledge-svg [data-look="neo"].node path{stroke:url(#knowledge-svg-gradient);stroke-width:1px;}#knowledge-svg [data-look="neo"].node .outer-path{filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#knowledge-svg [data-look="neo"].node .neo-line path{stroke:#6A8F63;filter:none;}#knowledge-svg [data-look="neo"].node circle{stroke:url(#knowledge-svg-gradient);filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#knowledge-svg [data-look="neo"].node circle .state-start{fill:#000000;}#knowledge-svg [data-look="neo"].icon-shape .icon{fill:url(#knowledge-svg-gradient);filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#knowledge-svg [data-look="neo"].icon-shape .icon-neo path{stroke:url(#knowledge-svg-gradient);filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#knowledge-svg :root{--mermaid-font-family:"trebuchet ms",verdana,arial,sans-serif;}#knowledge-svg .input rect{fill:#FCE4D6!important;stroke:#B76E4C!important;color:#1f2d2a!important;}#knowledge-svg .input polygon{fill:#FCE4D6!important;stroke:#B76E4C!important;color:#1f2d2a!important;}#knowledge-svg .input ellipse{fill:#FCE4D6!important;stroke:#B76E4C!important;color:#1f2d2a!important;}#knowledge-svg .input circle{fill:#FCE4D6!important;stroke:#B76E4C!important;color:#1f2d2a!important;}#knowledge-svg .input path{fill:#FCE4D6!important;stroke:#B76E4C!important;color:#1f2d2a!important;}#knowledge-svg .input tspan{fill:#1f2d2a!important;}#knowledge-svg .normalize rect{fill:#D9EAD3!important;stroke:#6A8F63!important;color:#1f2d2a!important;}#knowledge-svg .normalize polygon{fill:#D9EAD3!important;stroke:#6A8F63!important;color:#1f2d2a!important;}#knowledge-svg .normalize ellipse{fill:#D9EAD3!important;stroke:#6A8F63!important;color:#1f2d2a!important;}#knowledge-svg .normalize circle{fill:#D9EAD3!important;stroke:#6A8F63!important;color:#1f2d2a!important;}#knowledge-svg .normalize path{fill:#D9EAD3!important;stroke:#6A8F63!important;color:#1f2d2a!important;}#knowledge-svg .normalize tspan{fill:#1f2d2a!important;}#knowledge-svg .extract rect{fill:#E2F0D9!important;stroke:#6A8F63!important;color:#1f2d2a!important;}#knowledge-svg .extract polygon{fill:#E2F0D9!important;stroke:#6A8F63!important;color:#1f2d2a!important;}#knowledge-svg .extract ellipse{fill:#E2F0D9!important;stroke:#6A8F63!important;color:#1f2d2a!important;}#knowledge-svg .extract circle{fill:#E2F0D9!important;stroke:#6A8F63!important;color:#1f2d2a!important;}#knowledge-svg .extract path{fill:#E2F0D9!important;stroke:#6A8F63!important;color:#1f2d2a!important;}#knowledge-svg .extract tspan{fill:#1f2d2a!important;}#knowledge-svg .store rect{fill:#DDEBF7!important;stroke:#5B8DB0!important;color:#1f2d2a!important;}#knowledge-svg .store polygon{fill:#DDEBF7!important;stroke:#5B8DB0!important;color:#1f2d2a!important;}#knowledge-svg .store ellipse{fill:#DDEBF7!important;stroke:#5B8DB0!important;color:#1f2d2a!important;}#knowledge-svg .store circle{fill:#DDEBF7!important;stroke:#5B8DB0!important;color:#1f2d2a!important;}#knowledge-svg .store path{fill:#DDEBF7!important;stroke:#5B8DB0!important;color:#1f2d2a!important;}#knowledge-svg .store tspan{fill:#1f2d2a!important;}#knowledge-svg .sdk rect{fill:#EFE6D2!important;stroke:#9A825A!important;color:#1f2d2a!important;}#knowledge-svg .sdk polygon{fill:#EFE6D2!important;stroke:#9A825A!important;color:#1f2d2a!important;}#knowledge-svg .sdk ellipse{fill:#EFE6D2!important;stroke:#9A825A!important;color:#1f2d2a!important;}#knowledge-svg .sdk circle{fill:#EFE6D2!important;stroke:#9A825A!important;color:#1f2d2a!important;}#knowledge-svg .sdk path{fill:#EFE6D2!important;stroke:#9A825A!important;color:#1f2d2a!important;}#knowledge-svg .sdk tspan{fill:#1f2d2a!important;}</style><g><marker id="knowledge-svg_flowchart-v2-pointEnd" class="marker flowchart-v2" viewBox="0 0 10 10" refX="5" refY="5" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="8" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" class="arrowMarkerPath" style="stroke-width: 1; stroke-dasharray: 1, 0;"/></marker><marker id="knowledge-svg_flowchart-v2-pointStart" class="marker flowchart-v2" viewBox="0 0 10 10" refX="4.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="8" orient="auto"><path d="M 0 5 L 10 10 L 10 0 z" class="arrowMarkerPath" style="stroke-width: 1; stroke-dasharray: 1, 0;"/></marker><marker id="knowledge-svg_flowchart-v2-pointEnd-margin" class="marker flowchart-v2" viewBox="0 0 11.5 14" refX="11.5" refY="7" markerUnits="userSpaceOnUse" markerWidth="10.5" markerHeight="14" orient="auto"><path d="M 0 0 L 11.5 7 L 0 14 z" class="arrowMarkerPath" style="stroke-width: 0; stroke-dasharray: 1, 0;"/></marker><marker id="knowledge-svg_flowchart-v2-pointStart-margin" class="marker flowchart-v2" viewBox="0 0 11.5 14" refX="1" refY="7" markerUnits="userSpaceOnUse" markerWidth="11.5" markerHeight="14" orient="auto"><polygon points="0,7 11.5,14 11.5,0" class="arrowMarkerPath" style="stroke-width: 0; stroke-dasharray: 1, 0;"/></marker><marker id="knowledge-svg_flowchart-v2-circleEnd" class="marker flowchart-v2" viewBox="0 0 10 10" refX="11" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><circle cx="5" cy="5" r="5" class="arrowMarkerPath" style="stroke-width: 1; stroke-dasharray: 1, 0;"/></marker><marker id="knowledge-svg_flowchart-v2-circleStart" class="marker flowchart-v2" viewBox="0 0 10 10" refX="-1" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><circle cx="5" cy="5" r="5" class="arrowMarkerPath" style="stroke-width: 1; stroke-dasharray: 1, 0;"/></marker><marker id="knowledge-svg_flowchart-v2-circleEnd-margin" class="marker flowchart-v2" viewBox="0 0 10 10" refY="5" refX="12.25" markerUnits="userSpaceOnUse" markerWidth="14" markerHeight="14" orient="auto"><circle cx="5" cy="5" r="5" class="arrowMarkerPath" style="stroke-width: 0; stroke-dasharray: 1, 0;"/></marker><marker id="knowledge-svg_flowchart-v2-circleStart-margin" class="marker flowchart-v2" viewBox="0 0 10 10" refX="-2" refY="5" markerUnits="userSpaceOnUse" markerWidth="14" markerHeight="14" orient="auto"><circle cx="5" cy="5" r="5" class="arrowMarkerPath" style="stroke-width: 0; stroke-dasharray: 1, 0;"/></marker><marker id="knowledge-svg_flowchart-v2-crossEnd" class="marker cross flowchart-v2" viewBox="0 0 11 11" refX="12" refY="5.2" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><path d="M 1,1 l 9,9 M 10,1 l -9,9" class="arrowMarkerPath" style="stroke-width: 2; stroke-dasharray: 1, 0;"/></marker><marker id="knowledge-svg_flowchart-v2-crossStart" class="marker cross flowchart-v2" viewBox="0 0 11 11" refX="-1" refY="5.2" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><path d="M 1,1 l 9,9 M 10,1 l -9,9" class="arrowMarkerPath" style="stroke-width: 2; stroke-dasharray: 1, 0;"/></marker><marker id="knowledge-svg_flowchart-v2-crossEnd-margin" class="marker cross flowchart-v2" viewBox="0 0 15 15" refX="17.7" refY="7.5" markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="12" orient="auto"><path d="M 1,1 L 14,14 M 1,14 L 14,1" class="arrowMarkerPath" style="stroke-width: 2.5;"/></marker><marker id="knowledge-svg_flowchart-v2-crossStart-margin" class="marker cross flowchart-v2" viewBox="0 0 15 15" refX="-3.5" refY="7.5" markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="12" orient="auto"><path d="M 1,1 L 14,14 M 1,14 L 14,1" class="arrowMarkerPath" style="stroke-width: 2.5; stroke-dasharray: 1, 0;"/></marker><g class="root"><g class="clusters"><g class="cluster" id="knowledge-svg-Runtime" data-look="classic"><rect style="" x="1960.875" y="16.375" width="411.9375" height="442.375"/><g class="cluster-label" transform="translate(2113.84375, 16.375)"><g><rect class="background" style="stroke: none"/><text y="-10.1" style=""><tspan class="text-outer-tspan row" x="0" y="-0.1em" dy="1.1em"><tspan font-style="normal" class="text-inner-tspan" font-weight="normal">运行期入口与治理</tspan></tspan></text></g></g></g><g class="cluster" id="knowledge-svg-Stores" data-look="classic"><rect style="" x="1692.1875" y="8" width="210.6875" height="487.5"/><g class="cluster-label" transform="translate(1758.03125, 8)"><g><rect class="background" style="stroke: none"/><text y="-10.1" style=""><tspan class="text-outer-tspan row" x="0" y="-0.1em" dy="1.1em"><tspan font-style="normal" class="text-inner-tspan" font-weight="normal">专题知识资产</tspan></tspan></text></g></g></g><g class="cluster" id="knowledge-svg-Extract" data-look="classic"><rect style="" x="1385.734375" y="8" width="248.453125" height="489.125"/><g class="cluster-label" transform="translate(1483.4609375, 8)"><g><rect class="background" style="stroke: none"/><text y="-10.1" style=""><tspan class="text-outer-tspan row" x="0" y="-0.1em" dy="1.1em"><tspan font-style="normal" class="text-inner-tspan" font-weight="normal">知识识别</tspan></tspan></text></g></g></g><g class="cluster" id="knowledge-svg-Normalize" data-look="classic"><rect style="" x="289.46875" y="16.375" width="1038.265625" height="414"/><g class="cluster-label" transform="translate(775.1015625, 16.375)"><g><rect class="background" style="stroke: none"/><text y="-10.1" style=""><tspan class="text-outer-tspan row" x="0" y="-0.1em" dy="1.1em"><tspan font-style="normal" class="text-inner-tspan" font-weight="normal">结构归一化</tspan></tspan></text></g></g></g><g class="cluster" id="knowledge-svg-Input" data-look="classic"><rect style="" x="8" y="148.25" width="223.46875" height="367.25"/><g class="cluster-label" transform="translate(92.734375, 148.25)"><g><rect class="background" style="stroke: none"/><text y="-10.1" style=""><tspan class="text-outer-tspan row" x="0" y="-0.1em" dy="1.1em"><tspan font-style="normal" class="text-inner-tspan" font-weight="normal">输入资产</tspan></tspan></text></g></g></g></g><g class="edgePaths"><path d="M197.133,205L202.855,205C208.578,205,220.023,205,230.579,205C241.135,205,250.802,205,260.469,205C270.135,205,279.802,205,288.802,205C297.802,205,306.135,205,310.302,205L314.469,205" id="knowledge-svg-L_Raw_RawParser_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_Raw_RawParser_0" data-points="W3sieCI6MTk3LjEzMjgxMjUsInkiOjIwNX0seyJ4IjoyMzEuNDY4NzUsInkiOjIwNX0seyJ4IjoyNjAuNDY4NzUsInkiOjIwNX0seyJ4IjoyODkuNDY4NzUsInkiOjIwNX0seyJ4IjozMTguNDY4NzUsInkiOjIwNX1d" data-look="classic" marker-end="url(#knowledge-svg_flowchart-v2-pointEnd)"/><path d="M522.109,205L526.943,205C531.776,205,541.443,205,555.341,208.431C569.239,211.861,587.368,218.723,596.432,222.153L605.497,225.584" id="knowledge-svg-L_RawParser_Normalizer_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_RawParser_Normalizer_0" data-points="W3sieCI6NTIyLjEwOTM3NSwieSI6MjA1fSx7IngiOjU1MS4xMDkzNzUsInkiOjIwNX0seyJ4Ijo2MDkuMjM4MDUxNDcwNTg4MywieSI6MjI3fV0=" data-look="classic" marker-end="url(#knowledge-svg_flowchart-v2-pointEnd)"/><path d="M202.469,365.25L207.302,365.25C212.135,365.25,221.802,365.25,231.469,365.25C241.135,365.25,250.802,365.25,260.469,365.25C270.135,365.25,279.802,365.25,306.439,365.25C333.076,365.25,376.682,365.25,420.289,365.25C463.896,365.25,507.503,365.25,544.913,350.909C582.323,336.569,613.538,307.888,629.145,293.547L644.752,279.206" id="knowledge-svg-L_Processed_Normalizer_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_Processed_Normalizer_0" data-points="W3sieCI6MjAyLjQ2ODc1LCJ5IjozNjUuMjV9LHsieCI6MjMxLjQ2ODc1LCJ5IjozNjUuMjV9LHsieCI6MjYwLjQ2ODc1LCJ5IjozNjUuMjV9LHsieCI6Mjg5LjQ2ODc1LCJ5IjozNjUuMjV9LHsieCI6NDIwLjI4OTA2MjUsInkiOjM2NS4yNX0seyJ4Ijo1NTEuMTA5Mzc1LCJ5IjozNjUuMjV9LHsieCI6NjQ3LjY5NzA4NDkzOTQyNzMsInkiOjI3Ni41fV0=" data-look="classic" marker-end="url(#knowledge-svg_flowchart-v2-pointEnd)"/><path d="M769.156,251.75L773.99,251.75C778.823,251.75,788.49,251.75,797.49,251.75C806.49,251.75,814.823,251.75,818.99,251.75L823.156,251.75" id="knowledge-svg-L_Normalizer_Chunker_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_Normalizer_Chunker_0" data-points="W3sieCI6NzY5LjE1NjI1LCJ5IjoyNTEuNzV9LHsieCI6Nzk4LjE1NjI1LCJ5IjoyNTEuNzV9LHsieCI6ODI3LjE1NjI1LCJ5IjoyNTEuNzV9XQ==" data-look="classic" marker-end="url(#knowledge-svg_flowchart-v2-pointEnd)"/><path d="M1029.422,251.75L1034.255,251.75C1039.089,251.75,1048.755,251.75,1057.755,251.75C1066.755,251.75,1075.089,251.75,1079.255,251.75L1083.422,251.75" id="knowledge-svg-L_Chunker_Taxonomy_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_Chunker_Taxonomy_0" data-points="W3sieCI6MTAyOS40MjE4NzUsInkiOjI1MS43NX0seyJ4IjoxMDU4LjQyMTg3NSwieSI6MjUxLjc1fSx7IngiOjEwODcuNDIxODc1LCJ5IjoyNTEuNzV9XQ==" data-look="classic" marker-end="url(#knowledge-svg_flowchart-v2-pointEnd)"/><path d="M201.859,458.75L206.794,458.75C211.729,458.75,221.599,458.75,231.367,458.75C241.135,458.75,250.802,458.75,260.469,458.75C270.135,458.75,279.802,458.75,306.439,458.75C333.076,458.75,376.682,458.75,420.289,458.75C463.896,458.75,507.503,458.75,549.893,458.75C592.284,458.75,633.458,458.75,674.633,458.75C715.807,458.75,756.982,458.75,799.258,458.75C841.534,458.75,884.911,458.75,928.289,458.75C971.667,458.75,1015.044,458.75,1059.176,458.75C1103.307,458.75,1148.193,458.75,1193.078,458.75C1237.964,458.75,1282.849,458.75,1310.125,458.75C1337.401,458.75,1347.068,458.75,1356.734,458.75C1366.401,458.75,1376.068,458.75,1396.598,444.408C1417.129,430.066,1448.524,401.382,1464.221,387.04L1479.919,372.698" id="knowledge-svg-L_TaskBook_RuleExtractor_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_TaskBook_RuleExtractor_0" data-points="W3sieCI6MjAxLjg1OTM3NSwieSI6NDU4Ljc1fSx7IngiOjIzMS40Njg3NSwieSI6NDU4Ljc1fSx7IngiOjI2MC40Njg3NSwieSI6NDU4Ljc1fSx7IngiOjI4OS40Njg3NSwieSI6NDU4Ljc1fSx7IngiOjQyMC4yODkwNjI1LCJ5Ijo0NTguNzV9LHsieCI6NTUxLjEwOTM3NSwieSI6NDU4Ljc1fSx7IngiOjY3NC42MzI4MTI1LCJ5Ijo0NTguNzV9LHsieCI6Nzk4LjE1NjI1LCJ5Ijo0NTguNzV9LHsieCI6OTI4LjI4OTA2MjUsInkiOjQ1OC43NX0seyJ4IjoxMDU4LjQyMTg3NSwieSI6NDU4Ljc1fSx7IngiOjExOTMuMDc4MTI1LCJ5Ijo0NTguNzV9LHsieCI6MTMyNy43MzQzNzUsInkiOjQ1OC43NX0seyJ4IjoxMzU2LjczNDM3NSwieSI6NDU4Ljc1fSx7IngiOjEzODUuNzM0Mzc1LCJ5Ijo0NTguNzV9LHsieCI6MTQ4Mi44NzE4ODUzMjQ4OSwieSI6MzcwfV0=" data-look="classic" marker-end="url(#knowledge-svg_flowchart-v2-pointEnd)"/><path d="M1210.9,227L1230.373,199.958C1249.845,172.917,1288.79,118.833,1313.095,91.792C1337.401,64.75,1347.068,64.75,1356.734,64.75C1366.401,64.75,1376.068,64.75,1390.569,64.75C1405.07,64.75,1424.406,64.75,1434.074,64.75L1443.742,64.75" id="knowledge-svg-L_Taxonomy_SlotMiner_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_Taxonomy_SlotMiner_0" data-points="W3sieCI6MTIxMC45MDAyNzU3MzUyOTQxLCJ5IjoyMjd9LHsieCI6MTMyNy43MzQzNzUsInkiOjY0Ljc1fSx7IngiOjEzNTYuNzM0Mzc1LCJ5Ijo2NC43NX0seyJ4IjoxMzg1LjczNDM3NSwieSI6NjQuNzV9LHsieCI6MTQ0Ny43NDIxODc1LCJ5Ijo2NC43NX1d" data-look="classic" marker-end="url(#knowledge-svg_flowchart-v2-pointEnd)"/><path d="M1572.18,64.75L1582.514,64.75C1592.849,64.75,1613.518,64.75,1628.686,64.75C1643.854,64.75,1653.521,64.75,1663.188,64.75C1672.854,64.75,1682.521,64.75,1694.234,64.75C1705.948,64.75,1719.708,64.75,1726.589,64.75L1733.469,64.75" id="knowledge-svg-L_SlotMiner_SlotStore_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_SlotMiner_SlotStore_0" data-points="W3sieCI6MTU3Mi4xNzk2ODc1LCJ5Ijo2NC43NX0seyJ4IjoxNjM0LjE4NzUsInkiOjY0Ljc1fSx7IngiOjE2NjMuMTg3NSwieSI6NjQuNzV9LHsieCI6MTY5Mi4xODc1LCJ5Ijo2NC43NX0seyJ4IjoxNzM3LjQ2ODc1LCJ5Ijo2NC43NX1d" data-look="classic" marker-end="url(#knowledge-svg_flowchart-v2-pointEnd)"/><path d="M1228.722,227L1245.224,215.542C1261.726,204.083,1294.73,181.167,1316.066,169.708C1337.401,158.25,1347.068,158.25,1356.734,158.25C1366.401,158.25,1376.068,158.25,1387.582,158.25C1399.096,158.25,1412.458,158.25,1419.139,158.25L1425.82,158.25" id="knowledge-svg-L_Taxonomy_PassageCurator_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_Taxonomy_PassageCurator_0" data-points="W3sieCI6MTIyOC43MjI0MjY0NzA1ODgzLCJ5IjoyMjd9LHsieCI6MTMyNy43MzQzNzUsInkiOjE1OC4yNX0seyJ4IjoxMzU2LjczNDM3NSwieSI6MTU4LjI1fSx7IngiOjEzODUuNzM0Mzc1LCJ5IjoxNTguMjV9LHsieCI6MTQyOS44MjAzMTI1LCJ5IjoxNTguMjV9XQ==" data-look="classic" marker-end="url(#knowledge-svg_flowchart-v2-pointEnd)"/><path d="M1590.102,158.25L1597.449,158.25C1604.797,158.25,1619.492,158.25,1631.673,158.25C1643.854,158.25,1653.521,158.25,1663.188,158.25C1672.854,158.25,1682.521,158.25,1692.107,158.25C1701.693,158.25,1711.198,158.25,1715.951,158.25L1720.703,158.25" id="knowledge-svg-L_PassageCurator_PassageStore_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_PassageCurator_PassageStore_0" data-points="W3sieCI6MTU5MC4xMDE1NjI1LCJ5IjoxNTguMjV9LHsieCI6MTYzNC4xODc1LCJ5IjoxNTguMjV9LHsieCI6MTY2My4xODc1LCJ5IjoxNTguMjV9LHsieCI6MTY5Mi4xODc1LCJ5IjoxNTguMjV9LHsieCI6MTcyNC43MDMxMjUsInkiOjE1OC4yNX1d" data-look="classic" marker-end="url(#knowledge-svg_flowchart-v2-pointEnd)"/><path d="M1298.734,251.75L1303.568,251.75C1308.401,251.75,1318.068,251.75,1327.734,251.75C1337.401,251.75,1347.068,251.75,1356.734,251.75C1366.401,251.75,1376.068,251.75,1386.997,251.75C1397.927,251.75,1410.12,251.75,1416.216,251.75L1422.313,251.75" id="knowledge-svg-L_Taxonomy_TemplateCurator_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_Taxonomy_TemplateCurator_0" data-points="W3sieCI6MTI5OC43MzQzNzUsInkiOjI1MS43NX0seyJ4IjoxMzI3LjczNDM3NSwieSI6MjUxLjc1fSx7IngiOjEzNTYuNzM0Mzc1LCJ5IjoyNTEuNzV9LHsieCI6MTM4NS43MzQzNzUsInkiOjI1MS43NX0seyJ4IjoxNDI2LjMxMjUsInkiOjI1MS43NX1d" data-look="classic" marker-end="url(#knowledge-svg_flowchart-v2-pointEnd)"/><path d="M1593.609,251.75L1600.372,251.75C1607.135,251.75,1620.661,251.75,1632.258,251.75C1643.854,251.75,1653.521,251.75,1663.188,251.75C1672.854,251.75,1682.521,251.75,1691.521,251.75C1700.521,251.75,1708.854,251.75,1713.021,251.75L1717.188,251.75" id="knowledge-svg-L_TemplateCurator_TemplateStore_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_TemplateCurator_TemplateStore_0" data-points="W3sieCI6MTU5My42MDkzNzUsInkiOjI1MS43NX0seyJ4IjoxNjM0LjE4NzUsInkiOjI1MS43NX0seyJ4IjoxNjYzLjE4NzUsInkiOjI1MS43NX0seyJ4IjoxNjkyLjE4NzUsInkiOjI1MS43NX0seyJ4IjoxNzIxLjE4NzUsInkiOjI1MS43NX1d" data-look="classic" marker-end="url(#knowledge-svg_flowchart-v2-pointEnd)"/><path d="M1251.805,276.5L1264.46,281.833C1277.115,287.167,1302.425,297.833,1319.913,303.167C1337.401,308.5,1347.068,308.5,1356.734,308.5C1366.401,308.5,1376.068,308.5,1387.022,310.311C1397.977,312.122,1410.22,315.744,1416.341,317.554L1422.462,319.365" id="knowledge-svg-L_Taxonomy_RuleExtractor_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_Taxonomy_RuleExtractor_0" data-points="W3sieCI6MTI1MS44MDQ4NTk1ODE0OTc4LCJ5IjoyNzYuNX0seyJ4IjoxMzI3LjczNDM3NSwieSI6MzA4LjV9LHsieCI6MTM1Ni43MzQzNzUsInkiOjMwOC41fSx7IngiOjEzODUuNzM0Mzc1LCJ5IjozMDguNX0seyJ4IjoxNDI2LjI5ODE1MDUxMDIwNCwieSI6MzIwLjV9XQ==" data-look="classic" marker-end="url(#knowledge-svg_flowchart-v2-pointEnd)"/><path d="M1605.188,345.25L1610.021,345.25C1614.854,345.25,1624.521,345.25,1634.188,345.25C1643.854,345.25,1653.521,345.25,1663.188,345.25C1672.854,345.25,1682.521,345.25,1693.962,345.25C1705.404,345.25,1718.62,345.25,1725.228,345.25L1731.836,345.25" id="knowledge-svg-L_RuleExtractor_RuleStore_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_RuleExtractor_RuleStore_0" data-points="W3sieCI6MTYwNS4xODc1LCJ5IjozNDUuMjV9LHsieCI6MTYzNC4xODc1LCJ5IjozNDUuMjV9LHsieCI6MTY2My4xODc1LCJ5IjozNDUuMjV9LHsieCI6MTY5Mi4xODc1LCJ5IjozNDUuMjV9LHsieCI6MTczNS44MzU5Mzc1LCJ5IjozNDUuMjV9XQ==" data-look="classic" marker-end="url(#knowledge-svg_flowchart-v2-pointEnd)"/><path d="M1216.841,276.5L1235.323,295.75C1253.805,315,1290.77,353.5,1314.085,372.75C1337.401,392,1347.068,392,1356.734,392C1366.401,392,1376.068,392,1390.02,395.432C1403.973,398.864,1422.212,405.727,1431.331,409.159L1440.45,412.591" id="knowledge-svg-L_Taxonomy_EvidenceLinker_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_Taxonomy_EvidenceLinker_0" data-points="W3sieCI6MTIxNi44NDA5OTI2NDcwNTg4LCJ5IjoyNzYuNX0seyJ4IjoxMzI3LjczNDM3NSwieSI6MzkyfSx7IngiOjEzNTYuNzM0Mzc1LCJ5IjozOTJ9LHsieCI6MTM4NS43MzQzNzUsInkiOjM5Mn0seyJ4IjoxNDQ0LjE5MzkzMzgyMzUyOTUsInkiOjQxNH1d" data-look="classic" marker-end="url(#knowledge-svg_flowchart-v2-pointEnd)"/><path d="M1588.039,438.75L1595.73,438.75C1603.422,438.75,1618.805,438.75,1631.329,438.75C1643.854,438.75,1653.521,438.75,1663.188,438.75C1672.854,438.75,1682.521,438.75,1691.654,438.75C1700.786,438.75,1709.385,438.75,1713.685,438.75L1717.984,438.75" id="knowledge-svg-L_EvidenceLinker_EvidenceStore_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_EvidenceLinker_EvidenceStore_0" data-points="W3sieCI6MTU4OC4wMzkwNjI1LCJ5Ijo0MzguNzV9LHsieCI6MTYzNC4xODc1LCJ5Ijo0MzguNzV9LHsieCI6MTY2My4xODc1LCJ5Ijo0MzguNzV9LHsieCI6MTY5Mi4xODc1LCJ5Ijo0MzguNzV9LHsieCI6MTcyMS45ODQzNzUsInkiOjQzOC43NX1d" data-look="classic" marker-end="url(#knowledge-svg_flowchart-v2-pointEnd)"/><path d="M1857.594,64.75L1865.141,64.75C1872.688,64.75,1887.781,64.75,1900.161,64.75C1912.542,64.75,1922.208,64.75,1931.875,64.75C1941.542,64.75,1951.208,64.75,1970.718,83.475C1990.227,102.201,2019.579,139.651,2034.255,158.376L2048.931,177.102" id="knowledge-svg-L_SlotStore_KnowledgeStore_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_SlotStore_KnowledgeStore_0" data-points="W3sieCI6MTg1Ny41OTM3NSwieSI6NjQuNzV9LHsieCI6MTkwMi44NzUsInkiOjY0Ljc1fSx7IngiOjE5MzEuODc1LCJ5Ijo2NC43NX0seyJ4IjoxOTYwLjg3NSwieSI6NjQuNzV9LHsieCI6MjA1MS4zOTg4OTcwNTg4MjM0LCJ5IjoxODAuMjV9XQ==" data-look="classic" marker-end="url(#knowledge-svg_flowchart-v2-pointEnd)"/><path d="M1870.359,158.25L1875.779,158.25C1881.198,158.25,1892.036,158.25,1902.289,158.25C1912.542,158.25,1922.208,158.25,1931.875,158.25C1941.542,158.25,1951.208,158.25,1964.05,161.656C1976.891,165.061,1992.906,171.873,2000.914,175.279L2008.922,178.684" id="knowledge-svg-L_PassageStore_KnowledgeStore_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_PassageStore_KnowledgeStore_0" data-points="W3sieCI6MTg3MC4zNTkzNzUsInkiOjE1OC4yNX0seyJ4IjoxOTAyLjg3NSwieSI6MTU4LjI1fSx7IngiOjE5MzEuODc1LCJ5IjoxNTguMjV9LHsieCI6MTk2MC44NzUsInkiOjE1OC4yNX0seyJ4IjoyMDEyLjYwMjk0MTE3NjQ3MDUsInkiOjE4MC4yNX1d" data-look="classic" marker-end="url(#knowledge-svg_flowchart-v2-pointEnd)"/><path d="M1873.875,251.75L1878.708,251.75C1883.542,251.75,1893.208,251.75,1902.875,251.75C1912.542,251.75,1922.208,251.75,1931.875,251.75C1941.542,251.75,1951.208,251.75,1964.05,248.344C1976.891,244.939,1992.906,238.127,2000.914,234.721L2008.922,231.316" id="knowledge-svg-L_TemplateStore_KnowledgeStore_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_TemplateStore_KnowledgeStore_0" data-points="W3sieCI6MTg3My44NzUsInkiOjI1MS43NX0seyJ4IjoxOTAyLjg3NSwieSI6MjUxLjc1fSx7IngiOjE5MzEuODc1LCJ5IjoyNTEuNzV9LHsieCI6MTk2MC44NzUsInkiOjI1MS43NX0seyJ4IjoyMDEyLjYwMjk0MTE3NjQ3MDUsInkiOjIyOS43NX1d" data-look="classic" marker-end="url(#knowledge-svg_flowchart-v2-pointEnd)"/><path d="M1859.227,345.25L1866.501,345.25C1873.776,345.25,1888.326,345.25,1900.434,345.25C1912.542,345.25,1922.208,345.25,1931.875,345.25C1941.542,345.25,1951.208,345.25,1970.718,326.525C1990.227,307.799,2019.579,270.349,2034.255,251.624L2048.931,232.898" id="knowledge-svg-L_RuleStore_KnowledgeStore_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_RuleStore_KnowledgeStore_0" data-points="W3sieCI6MTg1OS4yMjY1NjI1LCJ5IjozNDUuMjV9LHsieCI6MTkwMi44NzUsInkiOjM0NS4yNX0seyJ4IjoxOTMxLjg3NSwieSI6MzQ1LjI1fSx7IngiOjE5NjAuODc1LCJ5IjozNDUuMjV9LHsieCI6MjA1MS4zOTg4OTcwNTg4MjM0LCJ5IjoyMjkuNzV9XQ==" data-look="classic" marker-end="url(#knowledge-svg_flowchart-v2-pointEnd)"/><path d="M1873.078,438.75L1878.044,438.75C1883.01,438.75,1892.943,438.75,1902.742,438.75C1912.542,438.75,1922.208,438.75,1931.875,438.75C1941.542,438.75,1951.208,438.75,1972.138,404.52C1993.069,370.29,2025.262,301.83,2041.359,267.6L2057.456,233.37" id="knowledge-svg-L_EvidenceStore_KnowledgeStore_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_EvidenceStore_KnowledgeStore_0" data-points="W3sieCI6MTg3My4wNzgxMjUsInkiOjQzOC43NX0seyJ4IjoxOTAyLjg3NSwieSI6NDM4Ljc1fSx7IngiOjE5MzEuODc1LCJ5Ijo0MzguNzV9LHsieCI6MTk2MC44NzUsInkiOjQzOC43NX0seyJ4IjoyMDU5LjE1ODA4ODIzNTI5NCwieSI6MjI5Ljc1fV0=" data-look="classic" marker-end="url(#knowledge-svg_flowchart-v2-pointEnd)"/><path d="M2151.719,205L2156.552,205C2161.385,205,2171.052,205,2180.052,205C2189.052,205,2197.385,205,2201.552,205L2205.719,205" id="knowledge-svg-L_KnowledgeStore_Governance_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_KnowledgeStore_Governance_0" data-points="W3sieCI6MjE1MS43MTg3NSwieSI6MjA1fSx7IngiOjIxODAuNzE4NzUsInkiOjIwNX0seyJ4IjoyMjA5LjcxODc1LCJ5IjoyMDV9XQ==" data-look="classic" marker-end="url(#knowledge-svg_flowchart-v2-pointEnd)"/></g><g class="edgeLabels"><g class="edgeLabel"><g class="label" data-id="L_Raw_RawParser_0" transform="translate(0, 0)"><text y="-10.1" text-anchor="middle"><tspan class="text-outer-tspan row" x="0" y="-0.1em" dy="1.1em" text-anchor="middle"/></text></g></g><g><rect class="background" style="stroke: none"/></g><g class="edgeLabel"><g class="label" data-id="L_RawParser_Normalizer_0" transform="translate(0, 0)"><text y="-10.1" text-anchor="middle"><tspan class="text-outer-tspan row" x="0" y="-0.1em" dy="1.1em" text-anchor="middle"/></text></g></g><g><rect class="background" style="stroke: none"/></g><g class="edgeLabel"><g class="label" data-id="L_Processed_Normalizer_0" transform="translate(0, 0)"><text y="-10.1" text-anchor="middle"><tspan class="text-outer-tspan row" x="0" y="-0.1em" dy="1.1em" text-anchor="middle"/></text></g></g><g><rect class="background" style="stroke: none"/></g><g class="edgeLabel"><g class="label" data-id="L_Normalizer_Chunker_0" transform="translate(0, 0)"><text y="-10.1" text-anchor="middle"><tspan class="text-outer-tspan row" x="0" y="-0.1em" dy="1.1em" text-anchor="middle"/></text></g></g><g><rect class="background" style="stroke: none"/></g><g class="edgeLabel"><g class="label" data-id="L_Chunker_Taxonomy_0" transform="translate(0, 0)"><text y="-10.1" text-anchor="middle"><tspan class="text-outer-tspan row" x="0" y="-0.1em" dy="1.1em" text-anchor="middle"/></text></g></g><g><rect class="background" style="stroke: none"/></g><g class="edgeLabel"><g class="label" data-id="L_TaskBook_RuleExtractor_0" transform="translate(0, 0)"><text y="-10.1" text-anchor="middle"><tspan class="text-outer-tspan row" x="0" y="-0.1em" dy="1.1em" text-anchor="middle"/></text></g></g><g><rect class="background" style="stroke: none"/></g><g class="edgeLabel"><g class="label" data-id="L_Taxonomy_SlotMiner_0" transform="translate(0, 0)"><text y="-10.1" text-anchor="middle"><tspan class="text-outer-tspan row" x="0" y="-0.1em" dy="1.1em" text-anchor="middle"/></text></g></g><g><rect class="background" style="stroke: none"/></g><g class="edgeLabel"><g class="label" data-id="L_SlotMiner_SlotStore_0" transform="translate(0, 0)"><text y="-10.1" text-anchor="middle"><tspan class="text-outer-tspan row" x="0" y="-0.1em" dy="1.1em" text-anchor="middle"/></text></g></g><g><rect class="background" style="stroke: none"/></g><g class="edgeLabel"><g class="label" data-id="L_Taxonomy_PassageCurator_0" transform="translate(0, 0)"><text y="-10.1" text-anchor="middle"><tspan class="text-outer-tspan row" x="0" y="-0.1em" dy="1.1em" text-anchor="middle"/></text></g></g><g><rect class="background" style="stroke: none"/></g><g class="edgeLabel"><g class="label" data-id="L_PassageCurator_PassageStore_0" transform="translate(0, 0)"><text y="-10.1" text-anchor="middle"><tspan class="text-outer-tspan row" x="0" y="-0.1em" dy="1.1em" text-anchor="middle"/></text></g></g><g><rect class="background" style="stroke: none"/></g><g class="edgeLabel"><g class="label" data-id="L_Taxonomy_TemplateCurator_0" transform="translate(0, 0)"><text y="-10.1" text-anchor="middle"><tspan class="text-outer-tspan row" x="0" y="-0.1em" dy="1.1em" text-anchor="middle"/></text></g></g><g><rect class="background" style="stroke: none"/></g><g class="edgeLabel"><g class="label" data-id="L_TemplateCurator_TemplateStore_0" transform="translate(0, 0)"><text y="-10.1" text-anchor="middle"><tspan class="text-outer-tspan row" x="0" y="-0.1em" dy="1.1em" text-anchor="middle"/></text></g></g><g><rect class="background" style="stroke: none"/></g><g class="edgeLabel"><g class="label" data-id="L_Taxonomy_RuleExtractor_0" transform="translate(0, 0)"><text y="-10.1" text-anchor="middle"><tspan class="text-outer-tspan row" x="0" y="-0.1em" dy="1.1em" text-anchor="middle"/></text></g></g><g><rect class="background" style="stroke: none"/></g><g class="edgeLabel"><g class="label" data-id="L_RuleExtractor_RuleStore_0" transform="translate(0, 0)"><text y="-10.1" text-anchor="middle"><tspan class="text-outer-tspan row" x="0" y="-0.1em" dy="1.1em" text-anchor="middle"/></text></g></g><g><rect class="background" style="stroke: none"/></g><g class="edgeLabel"><g class="label" data-id="L_Taxonomy_EvidenceLinker_0" transform="translate(0, 0)"><text y="-10.1" text-anchor="middle"><tspan class="text-outer-tspan row" x="0" y="-0.1em" dy="1.1em" text-anchor="middle"/></text></g></g><g><rect class="background" style="stroke: none"/></g><g class="edgeLabel"><g class="label" data-id="L_EvidenceLinker_EvidenceStore_0" transform="translate(0, 0)"><text y="-10.1" text-anchor="middle"><tspan class="text-outer-tspan row" x="0" y="-0.1em" dy="1.1em" text-anchor="middle"/></text></g></g><g><rect class="background" style="stroke: none"/></g><g class="edgeLabel"><g class="label" data-id="L_SlotStore_KnowledgeStore_0" transform="translate(0, 0)"><text y="-10.1" text-anchor="middle"><tspan class="text-outer-tspan row" x="0" y="-0.1em" dy="1.1em" text-anchor="middle"/></text></g></g><g><rect class="background" style="stroke: none"/></g><g class="edgeLabel"><g class="label" data-id="L_PassageStore_KnowledgeStore_0" transform="translate(0, 0)"><text y="-10.1" text-anchor="middle"><tspan class="text-outer-tspan row" x="0" y="-0.1em" dy="1.1em" text-anchor="middle"/></text></g></g><g><rect class="background" style="stroke: none"/></g><g class="edgeLabel"><g class="label" data-id="L_TemplateStore_KnowledgeStore_0" transform="translate(0, 0)"><text y="-10.1" text-anchor="middle"><tspan class="text-outer-tspan row" x="0" y="-0.1em" dy="1.1em" text-anchor="middle"/></text></g></g><g><rect class="background" style="stroke: none"/></g><g class="edgeLabel"><g class="label" data-id="L_RuleStore_KnowledgeStore_0" transform="translate(0, 0)"><text y="-10.1" text-anchor="middle"><tspan class="text-outer-tspan row" x="0" y="-0.1em" dy="1.1em" text-anchor="middle"/></text></g></g><g><rect class="background" style="stroke: none"/></g><g class="edgeLabel"><g class="label" data-id="L_EvidenceStore_KnowledgeStore_0" transform="translate(0, 0)"><text y="-10.1" text-anchor="middle"><tspan class="text-outer-tspan row" x="0" y="-0.1em" dy="1.1em" text-anchor="middle"/></text></g></g><g><rect class="background" style="stroke: none"/></g><g class="edgeLabel"><g class="label" data-id="L_KnowledgeStore_Governance_0" transform="translate(0, 0)"><text y="-10.1" text-anchor="middle"><tspan class="text-outer-tspan row" x="0" y="-0.1em" dy="1.1em" text-anchor="middle"/></text></g></g><g><rect class="background" style="stroke: none"/></g></g><g class="nodes"><g class="node default input" id="knowledge-svg-flowchart-Raw-0" data-look="classic" transform="translate(119.734375, 205)"><rect class="basic label-container" style="fill:#FCE4D6 !important;stroke:#B76E4C !important" x="-77.3984375" y="-24.75" width="154.796875" height="49.5"/><g class="label" style="color:#1f2d2a !important" transform="translate(-47.3984375, -9.75)"><rect/><foreignObject width="94.796875" height="19.5"><div style="color: rgb(31, 45, 42) !important; display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;" xmlns="http://www.w3.org/1999/xhtml"><span style="color:#1f2d2a !important" class="nodeLabel"><p>Raw 原始工程包</p></span></div></foreignObject></g></g><g class="node default input" id="knowledge-svg-flowchart-Processed-1" data-look="classic" transform="translate(119.734375, 365.25)"><rect class="basic label-container" style="fill:#FCE4D6 !important;stroke:#B76E4C !important" x="-82.734375" y="-24.75" width="165.46875" height="49.5"/><g class="label" style="color:#1f2d2a !important" transform="translate(-52.734375, -9.75)"><rect/><foreignObject width="105.46875" height="19.5"><div style="color: rgb(31, 45, 42) !important; display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;" xmlns="http://www.w3.org/1999/xhtml"><span style="color:#1f2d2a !important" class="nodeLabel"><p>Processed 章节树</p></span></div></foreignObject></g></g><g class="node default input" id="knowledge-svg-flowchart-TaskBook-2" data-look="classic" transform="translate(119.734375, 458.75)"><rect class="basic label-container" style="fill:#FCE4D6 !important;stroke:#B76E4C !important" x="-82.125" y="-24.75" width="164.25" height="49.5"/><g class="label" style="color:#1f2d2a !important" transform="translate(-52.125, -9.75)"><rect/><foreignObject width="104.25" height="19.5"><div style="color: rgb(31, 45, 42) !important; display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;" xmlns="http://www.w3.org/1999/xhtml"><span style="color:#1f2d2a !important" class="nodeLabel"><p>任务书 / 标准规范</p></span></div></foreignObject></g></g><g class="node default normalize" id="knowledge-svg-flowchart-RawParser-3" data-look="classic" transform="translate(420.2890625, 205)"><rect class="basic label-container" style="fill:#D9EAD3 !important;stroke:#6A8F63 !important" x="-101.8203125" y="-24.75" width="203.640625" height="49.5"/><g class="label" style="color:#1f2d2a !important" transform="translate(-71.8203125, -9.75)"><rect/><foreignObject width="143.640625" height="19.5"><div style="color: rgb(31, 45, 42) !important; display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;" xmlns="http://www.w3.org/1999/xhtml"><span style="color:#1f2d2a !important" class="nodeLabel"><p>Document Parse Agent</p></span></div></foreignObject></g></g><g class="node default normalize" id="knowledge-svg-flowchart-Normalizer-4" data-look="classic" transform="translate(674.6328125, 251.75)"><rect class="basic label-container" style="fill:#D9EAD3 !important;stroke:#6A8F63 !important" x="-94.5234375" y="-24.75" width="189.046875" height="49.5"/><g class="label" style="color:#1f2d2a !important" transform="translate(-64.5234375, -9.75)"><rect/><foreignObject width="129.046875" height="19.5"><div style="color: rgb(31, 45, 42) !important; display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;" xmlns="http://www.w3.org/1999/xhtml"><span style="color:#1f2d2a !important" class="nodeLabel"><p>Structure Normalizer</p></span></div></foreignObject></g></g><g class="node default normalize" id="knowledge-svg-flowchart-Chunker-5" data-look="classic" transform="translate(928.2890625, 251.75)"><rect class="basic label-container" style="fill:#D9EAD3 !important;stroke:#6A8F63 !important" x="-101.1328125" y="-24.75" width="202.265625" height="49.5"/><g class="label" style="color:#1f2d2a !important" transform="translate(-71.1328125, -9.75)"><rect/><foreignObject width="142.265625" height="19.5"><div style="color: rgb(31, 45, 42) !important; display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;" xmlns="http://www.w3.org/1999/xhtml"><span style="color:#1f2d2a !important" class="nodeLabel"><p>Chunk &amp; Dedup Agent</p></span></div></foreignObject></g></g><g class="node default normalize" id="knowledge-svg-flowchart-Taxonomy-6" data-look="classic" transform="translate(1193.078125, 251.75)"><rect class="basic label-container" style="fill:#D9EAD3 !important;stroke:#6A8F63 !important" x="-105.65625" y="-24.75" width="211.3125" height="49.5"/><g class="label" style="color:#1f2d2a !important" transform="translate(-75.65625, -9.75)"><rect/><foreignObject width="151.3125" height="19.5"><div style="color: rgb(31, 45, 42) !important; display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;" xmlns="http://www.w3.org/1999/xhtml"><span style="color:#1f2d2a !important" class="nodeLabel"><p>Subtype + Scene Tagger</p></span></div></foreignObject></g></g><g class="node default extract" id="knowledge-svg-flowchart-SlotMiner-7" data-look="classic" transform="translate(1509.9609375, 64.75)"><rect class="basic label-container" style="fill:#E2F0D9 !important;stroke:#6A8F63 !important" x="-62.21875" y="-24.75" width="124.4375" height="49.5"/><g class="label" style="color:#1f2d2a !important" transform="translate(-32.21875, -9.75)"><rect/><foreignObject width="64.4375" height="19.5"><div style="color: rgb(31, 45, 42) !important; display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;" xmlns="http://www.w3.org/1999/xhtml"><span style="color:#1f2d2a !important" class="nodeLabel"><p>Slot Miner</p></span></div></foreignObject></g></g><g class="node default extract" id="knowledge-svg-flowchart-PassageCurator-8" data-look="classic" transform="translate(1509.9609375, 158.25)"><rect class="basic label-container" style="fill:#E2F0D9 !important;stroke:#6A8F63 !important" x="-80.140625" y="-24.75" width="160.28125" height="49.5"/><g class="label" style="color:#1f2d2a !important" transform="translate(-50.140625, -9.75)"><rect/><foreignObject width="100.28125" height="19.5"><div style="color: rgb(31, 45, 42) !important; display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;" xmlns="http://www.w3.org/1999/xhtml"><span style="color:#1f2d2a !important" class="nodeLabel"><p>Passage Curator</p></span></div></foreignObject></g></g><g class="node default extract" id="knowledge-svg-flowchart-TemplateCurator-9" data-look="classic" transform="translate(1509.9609375, 251.75)"><rect class="basic label-container" style="fill:#E2F0D9 !important;stroke:#6A8F63 !important" x="-83.6484375" y="-24.75" width="167.296875" height="49.5"/><g class="label" style="color:#1f2d2a !important" transform="translate(-53.6484375, -9.75)"><rect/><foreignObject width="107.296875" height="19.5"><div style="color: rgb(31, 45, 42) !important; display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;" xmlns="http://www.w3.org/1999/xhtml"><span style="color:#1f2d2a !important" class="nodeLabel"><p>Template Curator</p></span></div></foreignObject></g></g><g class="node default extract" id="knowledge-svg-flowchart-RuleExtractor-10" data-look="classic" transform="translate(1509.9609375, 345.25)"><rect class="basic label-container" style="fill:#E2F0D9 !important;stroke:#6A8F63 !important" x="-95.2265625" y="-24.75" width="190.453125" height="49.5"/><g class="label" style="color:#1f2d2a !important" transform="translate(-65.2265625, -9.75)"><rect/><foreignObject width="130.453125" height="19.5"><div style="color: rgb(31, 45, 42) !important; display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;" xmlns="http://www.w3.org/1999/xhtml"><span style="color:#1f2d2a !important" class="nodeLabel"><p>Rule &amp; Risk Extractor</p></span></div></foreignObject></g></g><g class="node default extract" id="knowledge-svg-flowchart-EvidenceLinker-11" data-look="classic" transform="translate(1509.9609375, 438.75)"><rect class="basic label-container" style="fill:#E2F0D9 !important;stroke:#6A8F63 !important" x="-78.078125" y="-24.75" width="156.15625" height="49.5"/><g class="label" style="color:#1f2d2a !important" transform="translate(-48.078125, -9.75)"><rect/><foreignObject width="96.15625" height="19.5"><div style="color: rgb(31, 45, 42) !important; display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;" xmlns="http://www.w3.org/1999/xhtml"><span style="color:#1f2d2a !important" class="nodeLabel"><p>Evidence Linker</p></span></div></foreignObject></g></g><g class="node default store" id="knowledge-svg-flowchart-SlotStore-12" data-look="classic" transform="translate(1797.53125, 64.75)"><rect class="basic label-container" style="fill:#DDEBF7 !important;stroke:#5B8DB0 !important" x="-60.0625" y="-24.75" width="120.125" height="49.5"/><g class="label" style="color:#1f2d2a !important" transform="translate(-30.0625, -9.75)"><rect/><foreignObject width="60.125" height="19.5"><div style="color: rgb(31, 45, 42) !important; display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;" xmlns="http://www.w3.org/1999/xhtml"><span style="color:#1f2d2a !important" class="nodeLabel"><p>Slot Store</p></span></div></foreignObject></g></g><g class="node default store" id="knowledge-svg-flowchart-PassageStore-13" data-look="classic" transform="translate(1797.53125, 158.25)"><rect class="basic label-container" style="fill:#DDEBF7 !important;stroke:#5B8DB0 !important" x="-72.828125" y="-24.75" width="145.65625" height="49.5"/><g class="label" style="color:#1f2d2a !important" transform="translate(-42.828125, -9.75)"><rect/><foreignObject width="85.65625" height="19.5"><div style="color: rgb(31, 45, 42) !important; display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;" xmlns="http://www.w3.org/1999/xhtml"><span style="color:#1f2d2a !important" class="nodeLabel"><p>Passage Store</p></span></div></foreignObject></g></g><g class="node default store" id="knowledge-svg-flowchart-TemplateStore-14" data-look="classic" transform="translate(1797.53125, 251.75)"><rect class="basic label-container" style="fill:#DDEBF7 !important;stroke:#5B8DB0 !important" x="-76.34375" y="-24.75" width="152.6875" height="49.5"/><g class="label" style="color:#1f2d2a !important" transform="translate(-46.34375, -9.75)"><rect/><foreignObject width="92.6875" height="19.5"><div style="color: rgb(31, 45, 42) !important; display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;" xmlns="http://www.w3.org/1999/xhtml"><span style="color:#1f2d2a !important" class="nodeLabel"><p>Template Store</p></span></div></foreignObject></g></g><g class="node default store" id="knowledge-svg-flowchart-RuleStore-15" data-look="classic" transform="translate(1797.53125, 345.25)"><rect class="basic label-container" style="fill:#DDEBF7 !important;stroke:#5B8DB0 !important" x="-61.6953125" y="-24.75" width="123.390625" height="49.5"/><g class="label" style="color:#1f2d2a !important" transform="translate(-31.6953125, -9.75)"><rect/><foreignObject width="63.390625" height="19.5"><div style="color: rgb(31, 45, 42) !important; display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;" xmlns="http://www.w3.org/1999/xhtml"><span style="color:#1f2d2a !important" class="nodeLabel"><p>Rule Store</p></span></div></foreignObject></g></g><g class="node default store" id="knowledge-svg-flowchart-EvidenceStore-16" data-look="classic" transform="translate(1797.53125, 438.75)"><rect class="basic label-container" style="fill:#DDEBF7 !important;stroke:#5B8DB0 !important" x="-75.546875" y="-24.75" width="151.09375" height="49.5"/><g class="label" style="color:#1f2d2a !important" transform="translate(-45.546875, -9.75)"><rect/><foreignObject width="91.09375" height="19.5"><div style="color: rgb(31, 45, 42) !important; display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;" xmlns="http://www.w3.org/1999/xhtml"><span style="color:#1f2d2a !important" class="nodeLabel"><p>Evidence Store</p></span></div></foreignObject></g></g><g class="node default sdk" id="knowledge-svg-flowchart-KnowledgeStore-17" data-look="classic" transform="translate(2070.796875, 205)"><rect class="basic label-container" style="fill:#EFE6D2 !important;stroke:#9A825A !important" x="-80.921875" y="-24.75" width="161.84375" height="49.5"/><g class="label" style="color:#1f2d2a !important" transform="translate(-50.921875, -9.75)"><rect/><foreignObject width="101.84375" height="19.5"><div style="color: rgb(31, 45, 42) !important; display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;" xmlns="http://www.w3.org/1999/xhtml"><span style="color:#1f2d2a !important" class="nodeLabel"><p>KnowledgeStore</p></span></div></foreignObject></g></g><g class="node default sdk" id="knowledge-svg-flowchart-Governance-18" data-look="classic" transform="translate(2276.765625, 205)"><rect class="basic label-container" style="fill:#EFE6D2 !important;stroke:#9A825A !important" x="-67.046875" y="-24.75" width="134.09375" height="49.5"/><g class="label" style="color:#1f2d2a !important" transform="translate(-37.046875, -9.75)"><rect/><foreignObject width="74.09375" height="19.5"><div style="color: rgb(31, 45, 42) !important; display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;" xmlns="http://www.w3.org/1999/xhtml"><span style="color:#1f2d2a !important" class="nodeLabel"><p>Governance</p></span></div></foreignObject></g></g></g></g></g><defs><filter id="knowledge-svg-drop-shadow" height="130%" width="130%"><feDropShadow dx="4" dy="4" stdDeviation="0" flood-opacity="0.06" flood-color="#000000"/></filter></defs><defs><filter id="knowledge-svg-drop-shadow-small" height="150%" width="150%"><feDropShadow dx="2" dy="2" stdDeviation="0" flood-opacity="0.06" flood-color="#000000"/></filter></defs><linearGradient id="knowledge-svg-gradient" gradientUnits="objectBoundingBox" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#6A8F63" stop-opacity="1"/><stop offset="100%" stop-color="hsl(-15.652173913, 0%, 77.2549019608%)" stop-opacity="1"/></linearGradient></svg></div></div>
+      </section>
+      <aside class="detail-panel" id="node-detail"></aside>
+    </div>
+  </main>
+  <script>
+    const nodeCards = [
+  {
+    "id": "Raw",
+    "name": "Raw 原始资料",
+    "type": "输入资产",
+    "agentic": "否",
+    "layer": "输入资产",
+    "summary": "南网提供的未处理施工方案原文、扫描件、附件、盖章版和配套资料，是证据层输入而不是直接生成层输入。",
+    "purpose": "这一层是知识构建链路的最左端，直接承接南网交付的原始方案、扫描件和附件。它不直接送去运行期写作，而是先交给 RawParser 做解析，同时为后面的 EvidenceLinker 留下最原始的来源锚点；这样 Slot、Passage、Rule 三类知识资产在入库后都还能回到具体文件和版本。",
+    "inputs": [
+      "doc/docx/pdf/xls/ppt/图片/压缩包",
+      "文件名和目录结构"
+    ],
+    "outputs": [
+      "原文证据",
+      "附件引用",
+      "版本来源"
+    ],
+    "notes": "Raw 更适合承担证据底座和补充抽取来源，不应直接成为运行期唯一写作语料。真正给 Agent 高效使用的主输入，应是经过结构化处理的 Processed 数据。 ",
+    "graph_role": "knowledge asset",
+    "phase_scope": "终态知识层",
+    "upstream": [],
+    "downstream": [
+      "RawParser"
+    ],
+    "future_link": "终态下，外部提交施工方案的审核链会重新读取这一层，而不是只依赖 Processed。"
+  },
+  {
+    "id": "Processed",
+    "name": "Processed 章节树",
+    "type": "主输入资产",
+    "agentic": "否",
+    "layer": "输入资产",
+    "summary": "Formal_Version_Data_Processed 是统一章节树输入，已经拆成 text/table/image 内容块。",
+    "purpose": "它和 Raw 一起进入知识构建，但承担不同角色：Raw 负责证据底座，Processed 负责主建库输入。后面的 SlotMiner、PassageCurator、TemplateCurator 和 RuleExtractor 都主要围绕这一层提取结构化资产，因此运行期模板、段落、参数槽和规则资产都间接来自这里。",
+    "inputs": [
+      "Formal_Version_Data_Processed",
+      "基础/架线/跨越/立塔/消缺五类目录"
+    ],
+    "outputs": [
+      "章节节点",
+      "文本块",
+      "表格块",
+      "图片引用"
+    ],
+    "notes": "这里的子类型不是互斥分类；同一文档可以挂多个 subtype 标签，不能把目录名当成唯一类型。",
+    "graph_role": "knowledge asset",
+    "phase_scope": "终态知识层",
+    "upstream": [],
+    "downstream": [
+      "Normalizer"
+    ],
+    "future_link": "这是终态知识层的主语料底座，服务编制、审核以及后续动态管控的知识复用。"
+  },
+  {
+    "id": "TaskBook",
+    "name": "计划任务书 / 标准规范",
+    "type": "规则来源",
+    "agentic": "否",
+    "layer": "输入资产",
+    "summary": "任务计划书与标准规范提供系统目标、边界和验收口径，决定什么内容可以固定、可选、填空或人工补充。",
+    "purpose": "它不是普通背景材料，而是整个系统的边界定义。它向 RuleExtractor 明确哪些内容必须参数化、哪些措施必须检查、哪些章节允许人工补充，并给运行期的 Generation Planner 和 Compliance 提供同一套判断口径。",
+    "inputs": [
+      "计划任务书",
+      "施工规范",
+      "管理制度"
+    ],
+    "outputs": [
+      "体系目标",
+      "审核维度",
+      "风险规则来源"
+    ],
+    "notes": "如果没有这一层，系统会退化成只有 prompt 风格的写作器，而不是受控的工程文档系统。",
+    "graph_role": "knowledge asset",
+    "phase_scope": "终态知识层",
+    "upstream": [],
+    "downstream": [
+      "RuleExtractor"
+    ],
+    "future_link": "终态里，任务书的约束会继续影响动态管控和现场协同的检查点生成，只是本轮不把这些节点画进主图。"
+  },
+  {
+    "id": "RawParser",
+    "name": "Document Parse Agent",
+    "type": "Agentic 解析节点",
+    "agentic": "是",
+    "layer": "结构归一化",
+    "summary": "把 Raw 文档、附件和扫描件解析成可继续处理的文本、表格和来源片段。",
+    "purpose": "它直接承接 Raw，把原始文件中的文字、表格、附件线索转成可继续处理的解析结果，然后交给 Normalizer。没有这一步，后面的章节归一、字段提取和证据链建立都只能依赖人工处理好的数据，系统就无法吸收新到的原始资料。",
+    "inputs": [
+      "Raw 原始资料",
+      "文件类型识别"
+    ],
+    "outputs": [
+      "原文片段",
+      "表格内容",
+      "附件证据"
+    ],
+    "notes": "它只负责把资料转成可处理形态，不负责判断哪些内容值得入库。解析质量会直接影响后续抽取与追溯质量。",
+    "graph_role": "agent node",
+    "phase_scope": "终态知识层",
+    "upstream": [
+      "Raw"
+    ],
+    "downstream": [
+      "Normalizer"
+    ],
+    "future_link": "终态下，外部方案审核、证据追溯和附件对照都依赖这一层保留下来的原始提取结果。"
+  },
+  {
+    "id": "Normalizer",
+    "name": "Structure Normalizer",
+    "type": "结构归一化节点",
+    "agentic": "规则优先",
+    "layer": "结构归一化",
+    "summary": "把 Raw 解析结果和 Processed JSON 统一成同一套章节节点与内容块模型。",
+    "purpose": "它是 RawParser 和 Processed 的汇合点：一边接收原始资料解析结果，一边接收已处理章节树，把两者统一成相同的章节节点、块类型和元数据结构。这样后面的 Chunker、Taxonomy、SlotMiner 和 RuleExtractor 就能围绕同一套数据模型工作，而不必为不同来源分别写逻辑。",
+    "inputs": [
+      "Raw 解析结果",
+      "Processed 章节树"
+    ],
+    "outputs": [
+      "统一节点路径",
+      "统一内容块",
+      "统一表格结构"
+    ],
+    "notes": "这一步越规则化，后续 Agent 越稳定。它的价值在于把复杂性前移，而不是把复杂性留给生成或审核阶段。",
+    "graph_role": "pipeline node",
+    "phase_scope": "终态知识层",
+    "upstream": [
+      "RawParser",
+      "Processed"
+    ],
+    "downstream": [
+      "Chunker"
+    ],
+    "future_link": "统一模型是后续知识持续扩充的基础，否则每接一批新数据都要重写抽取链。"
+  },
+  {
+    "id": "Chunker",
+    "name": "Chunk & Dedup Agent",
+    "type": "切片去重节点",
+    "agentic": "部分",
+    "layer": "结构归一化",
+    "summary": "按章节、段落、表格和子主题切片，并处理重复段落与重复版本。",
+    "purpose": "它接在 Normalizer 后面，把统一后的章节内容切成适合检索和复用的粒度，并顺手处理重复段落与重复版本。切完的结果继续交给 Taxonomy 打标签，因此它决定了后面段落库、规则库和字段库拿到的是整章大块文本，还是足够细且可复用的知识单元。",
+    "inputs": [
+      "统一章节树",
+      "内容块",
+      "子类型标签"
+    ],
+    "outputs": [
+      "chunk id",
+      "内容 hash",
+      "多标签归属"
+    ],
+    "notes": "去重时不能丢掉多标签归属；同一文档出现在多个子类型目录中时，应保留所有 subtype 关联。",
+    "graph_role": "pipeline node",
+    "phase_scope": "终态知识层",
+    "upstream": [
+      "Normalizer"
+    ],
+    "downstream": [
+      "Taxonomy"
+    ],
+    "future_link": "这一层决定知识库能否同时支持模板骨架、段落候选、规则片段和证据索引的细粒度复用。"
+  },
+  {
+    "id": "Taxonomy",
+    "name": "Subtype + Scene Tagger",
+    "type": "Agentic 标签节点",
+    "agentic": "是，可人工校正",
+    "layer": "结构归一化",
+    "summary": "为切片内容打上多标签子类型、工况、章节角色和风险场景标签。",
+    "purpose": "它接在 Chunker 之后，把片段从“通用文本块”转成运行期可路由的知识单元。SlotMiner、PassageCurator、TemplateCurator、RuleExtractor 和 EvidenceLinker 都依赖这些标签；而 Generation Planner、Chapter Router 和 Compliance 能否精准检索，也取决于这一步是否把基础、架线、跨越、立塔、消缺和工况维度标对。",
+    "inputs": [
+      "chunk",
+      "章节标题",
+      "子类型目录",
+      "工况关键词"
+    ],
+    "outputs": [
+      "子类型标签",
+      "工况标签",
+      "章节标签",
+      "风险场景标签"
+    ],
+    "notes": "这里必须显式支持 multi-label subtype，不能退回一文档一类型的单标签假设。",
+    "graph_role": "agent node",
+    "phase_scope": "终态知识层",
+    "upstream": [
+      "Chunker"
+    ],
+    "downstream": [
+      "SlotMiner",
+      "PassageCurator",
+      "TemplateCurator",
+      "RuleExtractor",
+      "EvidenceLinker"
+    ],
+    "future_link": "终态下，动态管控阶段的检查表和异常识别也会复用这里的工况和风险标签体系。"
+  },
+  {
+    "id": "SlotMiner",
+    "name": "Slot Miner",
+    "type": "Agentic 参数槽识别节点",
+    "agentic": "是",
+    "layer": "知识识别",
+    "summary": "从模板挖空、表格空项和上下文语义中提炼统一字段槽。",
+    "purpose": "它从 Taxonomy 标注后的章节片段里识别可统一的参数槽，把看似零散的 XXXX、空表格项和上下文参数归并成稳定字段，然后写入 SlotStore。运行期的 Form Planner、fill_only 和部分审核规则都要依赖这些字段槽，所以它承担的是‘把原文占位变成系统字段’的角色。",
+    "inputs": [
+      "章节文本",
+      "表格单元格",
+      "占位符上下文"
+    ],
+    "outputs": [
+      "字段 id",
+      "字段别名",
+      "单位",
+      "必填规则"
+    ],
+    "notes": "它的价值在于语义归一，而不是机械替换占位符。否则同一个含义会在不同模板里产生多份重复字段。",
+    "graph_role": "agent node",
+    "phase_scope": "终态知识层",
+    "upstream": [
+      "Taxonomy"
+    ],
+    "downstream": [
+      "SlotStore"
+    ],
+    "future_link": "终态下，现场协同和结构化审核摘要表也会复用这些字段槽。"
+  },
+  {
+    "id": "PassageCurator",
+    "name": "Passage Curator",
+    "type": "Agentic 段落整理节点",
+    "agentic": "是",
+    "layer": "知识识别",
+    "summary": "把真实方案中的可复用段落整理成候选素材库。",
+    "purpose": "它承接 Taxonomy 的多标签片段，识别哪些段落适合作为预置可选段、哪些段落只允许在特定工况下复用，再写入 PassageStore。运行期的 select_and_fill 和 controlled_compose 之所以能保持行业口吻，不是因为模型自己会写，而是因为这里先把真实表述资产化了。",
+    "inputs": [
+      "章节段落",
+      "子类型标签",
+      "工况标签",
+      "证据来源"
+    ],
+    "outputs": [
+      "固定模板段落",
+      "预置可选段落",
+      "适用条件",
+      "禁改/可改标记"
+    ],
+    "notes": "它服务开放式写作，但不等于鼓励自由生成；重点是把真实段落变成受控素材。",
+    "graph_role": "agent node",
+    "phase_scope": "终态知识层",
+    "upstream": [
+      "Taxonomy"
+    ],
+    "downstream": [
+      "PassageStore"
+    ],
+    "future_link": "终态里，这一层将直接影响不同模板变体、不同子类型和不同工况下的写作风格与可选表达范围。"
+  },
+  {
+    "id": "RuleExtractor",
+    "name": "Rule & Risk Extractor",
+    "type": "Agentic 规则识别节点",
+    "agentic": "是",
+    "layer": "知识识别",
+    "summary": "从任务计划书、制度规范和历史方案中抽取风险触发条件、检查点和整改建议。",
+    "purpose": "它一端接收 TaskBook 和规范，另一端接收带标签的真实方案片段，把二者压成可执行的风险触发条件、必备措施和审核检查点，再写入 RuleStore。这样运行期的 derive_by_rules 和 Compliance 不用各自重新理解规范。",
+    "inputs": [
+      "计划任务书",
+      "规范条文",
+      "真实方案风险措施段落"
+    ],
+    "outputs": [
+      "触发条件",
+      "阈值",
+      "必备措施",
+      "审核检查点"
+    ],
+    "notes": "抽取的不是泛泛的安全提醒，而是与子类型、工况和参数绑定的可执行规则。",
+    "graph_role": "agent node",
+    "phase_scope": "终态知识层",
+    "upstream": [
+      "TaskBook",
+      "Taxonomy"
+    ],
+    "downstream": [
+      "RuleStore"
+    ],
+    "future_link": "终态下，现场监督检查表和异常提示也会复用这里的检查点资产，只是本轮不把 تلك阶段画进主图。"
+  },
+  {
+    "id": "EvidenceLinker",
+    "name": "Evidence Linker",
+    "type": "证据链接节点",
+    "agentic": "规则优先",
+    "layer": "知识识别",
+    "summary": "为字段、段落和规则建立回到原文件、原章节、原表格的证据链。",
+    "purpose": "它跟 SlotMiner、PassageCurator、RuleExtractor 平行工作，但不负责生产正文资产，而是负责给这些资产统一挂回源文件、章节路径和表格编号，再送入 EvidenceStore。这样运行期无论是生成某段正文还是输出某条审核意见，都能继续把结果追溯回来源。",
+    "inputs": [
+      "chunk id",
+      "文件路径",
+      "章节路径",
+      "表格编号"
+    ],
+    "outputs": [
+      "证据引用",
+      "来源版本",
+      "复核线索"
+    ],
+    "notes": "这一步直接支撑后期的人审、复核和责任边界。对基建场景来说，可追溯比多写一段华丽文字更重要。",
+    "graph_role": "pipeline node",
+    "phase_scope": "终态知识层",
+    "upstream": [
+      "Taxonomy"
+    ],
+    "downstream": [
+      "EvidenceStore"
+    ],
+    "future_link": "终态里，所有审核结论和后续现场差异提示都需要能回到这一层给出的证据索引。"
+  },
+  {
+    "id": "SlotStore",
+    "name": "Schema / Slot Store",
+    "type": "专题知识库",
+    "agentic": "否",
+    "layer": "专题知识库",
+    "summary": "统一字段槽库，保存字段 id、别名、单位、默认值与校验规则。",
+    "purpose": "它承接 SlotMiner 的输出，把统一字段存成可以被检索和校验的字段库。运行期 Form Planner 会从这里生成表单 schema，fill_only 和部分审核规则也会读取这里的字段定义，因此它是表单层和模板层共享的一套参数底座。",
+    "inputs": [
+      "字段 id",
+      "字段标签",
+      "单位",
+      "来源占位符"
+    ],
+    "outputs": [
+      "可复用字段 schema"
+    ],
+    "notes": "这不是前端表单本身，而是表单背后的语义字段知识库。它决定了系统能否做到表单统一、模板多样。",
+    "graph_role": "knowledge asset",
+    "phase_scope": "终态知识层",
+    "upstream": [
+      "SlotMiner"
+    ],
+    "downstream": [
+      "KnowledgeStore"
+    ],
+    "future_link": "终态下，这里的字段槽还会继续服务现场数据映射与差异比对。"
+  },
+  {
+    "id": "PassageStore",
+    "name": "Reusable Passage Store",
+    "type": "专题知识库",
+    "agentic": "否",
+    "layer": "专题知识库",
+    "summary": "保存真实方案中整理出的可复用段落、适用条件和改写边界。",
+    "purpose": "它承接 PassageCurator 整理出的可复用段落，把这些段落按适用条件、证据来源和禁改边界存起来。运行期 Router 一旦把某章送到 select_and_fill 或 controlled_compose，这里就是主要的候选素材来源，因此它是从单模板写作走向多原文写作的内容资产库。",
+    "inputs": [
+      "固定模板段落",
+      "预置可选段落",
+      "适用条件",
+      "证据链接"
+    ],
+    "outputs": [
+      "段落候选",
+      "段落元数据",
+      "证据引用"
+    ],
+    "notes": "它是系统从模板填空走向知识驱动写作的核心资产库，但前提是每一段都带适用条件和证据来源。",
+    "graph_role": "knowledge asset",
+    "phase_scope": "终态知识层",
+    "upstream": [
+      "PassageCurator"
+    ],
+    "downstream": [
+      "KnowledgeStore"
+    ],
+    "future_link": "终态下，不同模板变体和不同子类型会共享这套段落资产，但以不同条件过滤和不同风格边界使用。"
+  },
+  {
+    "id": "RuleStore",
+    "name": "Rule & Risk Store",
+    "type": "专题知识库",
+    "agentic": "否",
+    "layer": "专题知识库",
+    "summary": "保存结构化审核规则、风险触发条件、检查点和整改建议。",
+    "purpose": "它承接 RuleExtractor 的结果，为运行期的 derive_by_rules 和 Compliance 提供同一套规则资产。这样生成链和审核链共享同一规则底座，不会一边写措施一边又按另一套口径审。",
+    "inputs": [
+      "风险规则",
+      "阈值",
+      "必备措施",
+      "规范依据"
+    ],
+    "outputs": [
+      "检查点",
+      "风险等级",
+      "整改建议"
+    ],
+    "notes": "它不只是分数配置表，而是问题结构、风险条件和建议模板的统一管理处。",
+    "graph_role": "knowledge asset",
+    "phase_scope": "终态知识层",
+    "upstream": [
+      "RuleExtractor"
+    ],
+    "downstream": [
+      "KnowledgeStore"
+    ],
+    "future_link": "终态下，这里的检查点还能继续下游复用为现场核查表和异常提示依据。"
+  },
+  {
+    "id": "EvidenceStore",
+    "name": "Evidence Store",
+    "type": "专题知识库",
+    "agentic": "否",
+    "layer": "专题知识库",
+    "summary": "集中管理文件来源、章节路径、表格编号、附件引用和版本信息。",
+    "purpose": "它承接 EvidenceLinker 产出的来源索引，把字段、段落、规则和原始资料之间的映射稳定保存下来。这样后面 KnowledgeStore、Governance、人工复核和审计留痕都能围绕同一套证据索引工作，而不是各自重新找来源。",
+    "inputs": [
+      "原始文件",
+      "章节路径",
+      "表格编号",
+      "版本信息"
+    ],
+    "outputs": [
+      "证据索引",
+      "来源追踪",
+      "复核线索"
+    ],
+    "notes": "它和 PassageStore、RuleStore、SlotStore配套存在，目的是让所有知识资产都能回到来源，而不是孤立存储。",
+    "graph_role": "knowledge asset",
+    "phase_scope": "终态知识层",
+    "upstream": [
+      "EvidenceLinker"
+    ],
+    "downstream": [
+      "KnowledgeStore"
+    ],
+    "future_link": "终态里，所有结构化审核报告和后续现场协同输出都要依赖这里保留下来的追溯关系。"
+  },
+  {
+    "id": "KnowledgeStore",
+    "name": "KnowledgeStore",
+    "type": "SDK 工具",
+    "agentic": "否，供 Agent 调用",
+    "layer": "SDK 索引与工具层",
+    "summary": "知识层的统一出库与检索接口，承接参数槽、模板、段落、规则和证据资产。",
+    "purpose": "在知识构建图里，它不是普通流程下游 Agent，而是把 SlotStore、PassageStore、TemplateStore、RuleStore 和 EvidenceStore 封装成运行期可调用入口。图中连到 Governance 的关系表示版本、审核状态和上线边界的治理约束，不表示 KnowledgeStore 主动调用治理节点。",
+    "inputs": [
+      "检索 query",
+      "子类型/工况/章节过滤条件"
+    ],
+    "outputs": [
+      "字段槽",
+      "段落候选",
+      "规则候选",
+      "证据引用"
+    ],
+    "notes": "读图时要把它理解成 SDK 工具入口：它被运行期 Planner、Router、策略执行器和 Compliance 检索使用；具体决策仍由 Agent 节点负责。",
+    "graph_role": "SDK tool",
+    "phase_scope": "终态基础能力",
+    "upstream": [
+      "SlotStore",
+      "PassageStore",
+      "TemplateStore",
+      "RuleStore",
+      "EvidenceStore"
+    ],
+    "downstream": [
+      "Governance"
+    ],
+    "future_link": "在 Agent 主链和后续动态管控阶段，KnowledgeStore 会继续作为统一知识入口被读取，但治理关系仍由 Governance 单独约束。"
+  },
+  {
+    "id": "Governance",
+    "name": "Governance",
+    "type": "治理与留痕节点",
+    "agentic": "否",
+    "layer": "SDK 索引与工具层",
+    "summary": "记录知识版本、人工确认状态和上线边界。",
+    "purpose": "它位于知识层出库之后，负责控制哪些资产已审核、哪些仍是草稿、哪些版本可供运行期调用。这样系统才能在多人持续补充 Raw/Processed 数据时保持可审计、可回滚、可追责。",
+    "inputs": [
+      "知识库版本",
+      "证据链",
+      "人工确认记录"
+    ],
+    "outputs": [
+      "版本记录",
+      "审批状态",
+      "变更留痕"
+    ],
+    "notes": "它通常不参与运行期热路径，但决定知识层能否长期可维护。",
+    "graph_role": "governance node",
+    "phase_scope": "终态基础能力",
+    "upstream": [
+      "KnowledgeStore"
+    ],
+    "downstream": [],
+    "future_link": "终态里，治理层会同时约束编制、审核和后续现场协同阶段可使用的知识版本。"
+  },
+  {
+    "id": "TemplateCurator",
+    "name": "Template Curator",
+    "type": "Agentic 模板整理节点",
+    "agentic": "是",
+    "layer": "知识识别",
+    "summary": "把固定模板骨架、禁改章节和章节结构规则从段落资产里单独抽出来。",
+    "purpose": "它与 Passage Curator 并列，但职责不同：Passage Curator 整理可复用段落，Template Curator 固定章节骨架和改写边界。Generation Planner 只有同时拿到模板资产和段落资产，才能稳定区分 fill_only 与受控补写。",
+    "inputs": [
+      "带标签的章节结构",
+      "固定模板文本",
+      "章节规则"
+    ],
+    "outputs": [
+      "章节骨架",
+      "禁改标记",
+      "章节结构规则",
+      "模板版本"
+    ],
+    "notes": "如果不单独建这一层，固定模板与可选段落会混在一起，规划器很难稳定划清策略边界。",
+    "graph_role": "agent node",
+    "phase_scope": "终态知识层",
+    "upstream": [
+      "Taxonomy"
+    ],
+    "downstream": [
+      "TemplateStore"
+    ],
+    "future_link": "这是对齐完整 planning 新增的关键节点，用来显式承接“模板固定内容”这类资产。"
+  },
+  {
+    "id": "TemplateStore",
+    "name": "Template Store",
+    "type": "专题知识资产",
+    "agentic": "否",
+    "layer": "专题知识资产",
+    "summary": "集中保存固定模板骨架、禁改规则和章节结构约束。",
+    "purpose": "它承接 Template Curator 的输出，给运行期的 Generation Planner 和 fill_only 提供明确模板边界。只有把模板资产和段落资产分开，系统才能稳定表达“这一章只能填空”和“这一章可以受控补写”的差异。",
+    "inputs": [
+      "章节骨架",
+      "禁改标记",
+      "章节结构规则"
+    ],
+    "outputs": [
+      "模板版本",
+      "章节约束",
+      "rewrite_allowed 标记"
+    ],
+    "notes": "模板资产不是段落拼盘；它承担的是结构稳定与改写边界控制。",
+    "graph_role": "knowledge asset",
+    "phase_scope": "终态知识层",
+    "upstream": [
+      "TemplateCurator"
+    ],
+    "downstream": [
+      "KnowledgeStore"
+    ],
+    "future_link": "这是本轮知识图新增的显式资产层，用来对齐完整 planning 中的模板固定内容。"
+  }
+];
+    const nodeMap = new Map(nodeCards.map((item) => [item.id, item]));
+    const defaultNodeId = "Processed";
+    let scale = 0.43;
+    const minScale = 0.25, maxScale = 1.45;
+    const graphWindow = document.getElementById("graph-window");
+    const graphCanvas = document.getElementById("graph-canvas");
+    const zoomReadout = document.getElementById("zoom-readout");
+    const detail = document.getElementById("node-detail");
+    let pan = { x: null, y: null };
+    let dragState = null;
+    let suppressNodeClick = false;
+    let graphLookup = new Map();
+    const html = (value) => String(value).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;");
+    const badgeClass = (card) => {
+      const role = String(card.graph_role || card.type || "").toLowerCase();
+      if (role.includes("sdk")) return "sdk";
+      if (role.includes("strategy")) return "strategy";
+      if (role.includes("conditional")) return "decision";
+      if (role.includes("knowledge")) return "store";
+      if (role.includes("input")) return "input";
+      if (role.includes("output")) return "output";
+      if (String(card.type || "").includes("决策")) return "decision";
+      return "agentic";
+    };
+    function listItems(items) {
+      if (!items || !items.length) return '<p class="empty-note">无</p>';
+      return "<ul>" + items.map((item) => "<li>" + html(item) + "</li>").join("") + "</ul>";
+    }
+    function nodeRefLabel(nodeId) {
+      const ref = nodeMap.get(nodeId);
+      return ref ? ref.name : String(nodeId);
+    }
+    function nodeRefClass(nodeId) {
+      const ref = nodeMap.get(nodeId);
+      return ref ? badgeClass(ref) : "agentic";
+    }
+    function edgeColorForNode(nodeId) {
+      const palette = {
+        input:"#B76E4C",
+        agentic:"#6A8F63",
+        strategy:"#8B67A6",
+        decision:"#2F80A8",
+        sdk:"#9A825A",
+        output:"#6A8F63",
+        store:"#5B8DB0"
+      };
+      return palette[nodeRefClass(nodeId)] || "#6A8F63";
+    }
+    function glowForColor(color) {
+      const normalized = String(color || "").trim();
+      const rgba = {
+        "#B76E4C":"rgba(183,110,76,.78)",
+        "#6A8F63":"rgba(106,143,99,.78)",
+        "#8B67A6":"rgba(139,103,166,.78)",
+        "#2F80A8":"rgba(47,128,168,.82)",
+        "#9A825A":"rgba(154,130,90,.82)",
+        "#5B8DB0":"rgba(91,141,176,.82)"
+      };
+      return rgba[normalized] || "rgba(106,143,99,.78)";
+    }
+    function isSdkTool(nodeId) {
+      const ref = nodeMap.get(nodeId);
+      if (!ref) return false;
+      const role = String(ref.graph_role || "").toLowerCase();
+      const type = String(ref.type || "").toLowerCase();
+      return role.includes("sdk") || type.includes("sdk");
+    }
+    function isGovernanceNode(nodeId) {
+      const ref = nodeMap.get(nodeId);
+      if (!ref) return false;
+      const role = String(ref.graph_role || "").toLowerCase();
+      const type = String(ref.type || "");
+      return role.includes("governance") || type.includes("治理");
+    }
+    function nodeRefItems(items) {
+      if (!items || !items.length) return '<p class="empty-note">无</p>';
+      return '<ul class="node-ref-list">' + items.map((item) =>
+        '<li><button type="button" class="node-ref ' + nodeRefClass(item) + '" data-node-ref="' + html(item) + '">' + html(nodeRefLabel(item)) + '</button></li>'
+      ).join("") + "</ul>";
+    }
+    function optionalNodeRefSection(title, items) {
+      return items && items.length ? section(title, nodeRefItems(items)) : "";
+    }
+    function graphNeighborIds(nodeId, direction) {
+      const entry = graphLookup.get(nodeId);
+      if (!entry) return [];
+      const links = direction === "upstream" ? entry.incoming : entry.outgoing;
+      return links.map((link) => link.nodeId);
+    }
+    function mergeNodeRefs(primary, secondary) {
+      const merged = [];
+      [...(primary || []), ...(secondary || [])].forEach((nodeId) => {
+        if (nodeId && !merged.includes(nodeId)) merged.push(nodeId);
+      });
+      return merged;
+    }
+    function textBlock(value) {
+      if (!value) return '<p class="empty-note">无</p>';
+      return "<p>" + html(value) + "</p>";
+    }
+    function section(title, content) {
+      return "<h3>" + html(title) + "</h3>" + content;
+    }
+    function renderDetail(card) {
+      const upstreamRefs = mergeNodeRefs(graphNeighborIds(card.id, "upstream"), card.upstream);
+      const sdkDependencyRefs = upstreamRefs.filter((nodeId) => isSdkTool(nodeId));
+      const ordinaryUpstreamRefs = upstreamRefs.filter((nodeId) => !isSdkTool(nodeId));
+      const downstreamRefs = mergeNodeRefs(graphNeighborIds(card.id, "downstream"), card.downstream);
+      const toolInputRefs = upstreamRefs.filter((nodeId) => !isSdkTool(nodeId));
+      const toolGovernanceRefs = downstreamRefs.filter((nodeId) => isGovernanceNode(nodeId));
+      const toolConsumerRefs = downstreamRefs.filter((nodeId) => !isGovernanceNode(nodeId));
+      const relationSections = isSdkTool(card.id)
+        ? optionalNodeRefSection("工具输入来源", toolInputRefs)
+          + optionalNodeRefSection("发挥作用的节点", toolConsumerRefs)
+          + optionalNodeRefSection("治理 / 版本控制关系", toolGovernanceRefs)
+        : isGovernanceNode(card.id)
+          ? optionalNodeRefSection("治理对象 / 受控入口", upstreamRefs)
+            + section("下游", nodeRefItems(downstreamRefs))
+        : section("上游", nodeRefItems(ordinaryUpstreamRefs))
+          + optionalNodeRefSection("SDK Tool 依赖", sdkDependencyRefs)
+          + section("下游", nodeRefItems(downstreamRefs));
+      detail.innerHTML = "<h2>" + html(card.name) + "</h2>"
+        + '<div class="badge-row"><span class="badge ' + badgeClass(card) + '">' + html(card.type) + '</span>'
+        + '<span class="badge">Agentic：' + html(card.agentic) + '</span>'
+        + '<span class="badge">层级：' + html(card.layer) + '</span></div>'
+        + "<p>" + html(card.summary) + "</p>"
+        + section("节点类型", textBlock(card.graph_role))
+        + section("所属阶段", textBlock(card.phase_scope))
+        + section("在整体流程中的作用", textBlock(card.purpose))
+        + relationSections
+        + section("输入", listItems(card.inputs))
+        + section("输出", listItems(card.outputs))
+        + section("技术边界", textBlock(card.notes))
+        + section("与终态完整规划的关系", textBlock(card.future_link));
+    }
+    function getSvgSize(svg) {
+      const viewBox = (svg.getAttribute("viewBox") || "").trim().split(/[\s,]+/).map(Number);
+      if (viewBox.length === 4 && viewBox.every((value) => Number.isFinite(value))) {
+        return { width: viewBox[2], height: viewBox[3] };
+      }
+      const bounds = svg.getBoundingClientRect();
+      return { width: Math.max(bounds.width / scale, 1200), height: Math.max(bounds.height / scale, 720) };
+    }
+    function clampPan(size, x, y) {
+      const scaledWidth = size.width * scale;
+      const scaledHeight = size.height * scale;
+      let nextX = x;
+      let nextY = y;
+      if (scaledWidth <= graphWindow.clientWidth) {
+        nextX = (graphWindow.clientWidth - scaledWidth) / 2;
+      } else {
+        nextX = Math.min(0, Math.max(graphWindow.clientWidth - scaledWidth, nextX));
+      }
+      if (scaledHeight <= graphWindow.clientHeight) {
+        nextY = Math.max(18, (graphWindow.clientHeight - scaledHeight) / 2);
+      } else {
+        nextY = Math.min(0, Math.max(graphWindow.clientHeight - scaledHeight, nextY));
+      }
+      return { x: nextX, y: nextY };
+    }
+    function ensurePan(size) {
+      if (pan.x !== null && pan.y !== null) return;
+      pan = clampPan(size, 0, 18);
+    }
+    function applyTransform() {
+      if (!graphCanvas) return;
+      const svg = graphCanvas.querySelector("svg");
+      if (!svg) return;
+      const size = getSvgSize(svg);
+      const graphWidth = size.width;
+      const graphHeight = size.height;
+      svg.style.width = graphWidth + "px";
+      svg.style.height = graphHeight + "px";
+      graphCanvas.style.width = graphWidth + "px";
+      graphCanvas.style.height = graphHeight + "px";
+      ensurePan(size);
+      pan = clampPan(size, pan.x, pan.y);
+      graphCanvas.style.transform = "translate(" + pan.x + "px," + pan.y + "px) scale(" + scale + ")";
+      zoomReadout.textContent = Math.round(scale * 100) + "%";
+    }
+    function setScale(nextScale, event) {
+      const svg = graphCanvas ? graphCanvas.querySelector("svg") : null;
+      if (!svg) return;
+      const size = getSvgSize(svg);
+      ensurePan(size);
+      const oldScale = scale;
+      const rect = graphWindow.getBoundingClientRect();
+      const originX = event ? event.clientX - rect.left : rect.width / 2;
+      const originY = event ? event.clientY - rect.top : rect.height / 2;
+      const graphX = (originX - pan.x) / oldScale;
+      const graphY = (originY - pan.y) / oldScale;
+      scale = Math.min(maxScale, Math.max(minScale, nextScale));
+      pan = clampPan(size, originX - graphX * scale, originY - graphY * scale);
+      applyTransform();
+    }
+    function parseNodeId(rawId) {
+      const match = String(rawId || "").match(/flowchart-([A-Za-z0-9]+)-/);
+      return match ? match[1] : null;
+    }
+    function parseEdgeMeta(edge) {
+      const raw = edge.getAttribute("data-id") || edge.id || "";
+      const match = raw.match(/L_([A-Za-z0-9]+)_([A-Za-z0-9]+)_\d+$/);
+      return match ? { from: match[1], to: match[2] } : null;
+    }
+    function ensureLookupEntry(nodeId) {
+      if (!graphLookup.has(nodeId)) {
+        graphLookup.set(nodeId, { element:null, incoming:[], outgoing:[] });
+      }
+      return graphLookup.get(nodeId);
+    }
+    function buildGraphLookup() {
+      graphLookup = new Map();
+      const svg = graphCanvas ? graphCanvas.querySelector("svg") : null;
+      if (!svg) return;
+      svg.querySelectorAll(".node").forEach((node) => {
+        const nodeId = parseNodeId(node.id);
+        if (!nodeId) return;
+        const entry = ensureLookupEntry(nodeId);
+        entry.element = node;
+      });
+      svg.querySelectorAll('[data-edge="true"]').forEach((edge) => {
+        const meta = parseEdgeMeta(edge);
+        if (!meta) return;
+        ensureLookupEntry(meta.from).outgoing.push({ nodeId:meta.to, edge });
+        ensureLookupEntry(meta.to).incoming.push({ nodeId:meta.from, edge });
+      });
+    }
+    function clearHighlights() {
+      document.querySelectorAll(".graph-canvas svg .node-highlight-ring").forEach((ring) => ring.remove());
+      document.querySelectorAll(".graph-canvas svg .node").forEach((node) => node.classList.remove("selected-node", "adjacent-node"));
+      document.querySelectorAll('.graph-canvas svg [data-edge="true"]').forEach((edge) => {
+        edge.classList.remove("adjacent-edge", "adjacent-sdk-edge");
+        edge.style.removeProperty("stroke");
+        edge.style.removeProperty("stroke-width");
+        edge.style.removeProperty("opacity");
+        edge.style.removeProperty("filter");
+      });
+    }
+    function addHighlightRing(node, kind, strokeOverride) {
+      if (!node) return;
+      try {
+        const box = node.getBBox();
+        const padding = kind === "selected" ? 16 : 11;
+        const strokeColor = kind === "selected" ? "#D92D20" : (strokeOverride || "#6A8F63");
+        const strokeWidth = kind === "selected" ? "7px" : "5px";
+        const glowColor = kind === "selected" ? "rgba(217,45,32,.9)" : glowForColor(strokeColor);
+        const ring = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+        ring.setAttribute("class", "node-highlight-ring " + kind);
+        ring.setAttribute("x", box.x - padding);
+        ring.setAttribute("y", box.y - padding);
+        ring.setAttribute("width", box.width + padding * 2);
+        ring.setAttribute("height", box.height + padding * 2);
+        ring.setAttribute("rx", kind === "selected" ? "14" : "12");
+        ring.setAttribute("ry", kind === "selected" ? "14" : "12");
+        ring.style.setProperty("fill", "none", "important");
+        ring.style.setProperty("stroke", strokeColor, "important");
+        ring.style.setProperty("stroke-width", strokeWidth, "important");
+        ring.style.setProperty("filter", "drop-shadow(0 0 12px " + glowColor + ")", "important");
+        ring.style.setProperty("vector-effect", "non-scaling-stroke", "important");
+        node.appendChild(ring);
+      } catch (error) {}
+    }
+    function edgeColorForLink(selectedNodeId, link) {
+      const sdkColor = "#9A825A";
+      const isSdkEdge = isSdkTool(selectedNodeId) || isSdkTool(link.nodeId) || (link.edge && link.edge.classList.contains("edge-pattern-dotted"));
+      return isSdkEdge ? sdkColor : edgeColorForNode(link.nodeId);
+    }
+    function highlightEdge(link, color) {
+      if (!link.edge) return;
+      const isSdkEdge = isSdkTool(link.nodeId) || (link.edge && link.edge.classList.contains("edge-pattern-dotted"));
+      link.edge.classList.add(isSdkEdge ? "adjacent-sdk-edge" : "adjacent-edge");
+      link.edge.style.setProperty("stroke", color, "important");
+      link.edge.style.setProperty("stroke-width", "4px", "important");
+      link.edge.style.setProperty("opacity", "1", "important");
+      link.edge.style.setProperty("filter", "drop-shadow(0 0 7px " + glowForColor(color) + ")", "important");
+    }
+    function highlightNeighborhood(nodeId) {
+      const entry = graphLookup.get(nodeId);
+      if (!entry) return;
+      entry.incoming.forEach((link) => {
+        const neighborColor = edgeColorForNode(link.nodeId);
+        highlightEdge(link, edgeColorForLink(nodeId, link));
+        const neighbor = graphLookup.get(link.nodeId);
+        if (neighbor && neighbor.element) {
+          neighbor.element.classList.add("adjacent-node");
+          addHighlightRing(neighbor.element, "adjacent", neighborColor);
+        }
+      });
+      entry.outgoing.forEach((link) => {
+        const neighborColor = edgeColorForNode(link.nodeId);
+        highlightEdge(link, edgeColorForLink(nodeId, link));
+        const neighbor = graphLookup.get(link.nodeId);
+        if (neighbor && neighbor.element) {
+          neighbor.element.classList.add("adjacent-node");
+          addHighlightRing(neighbor.element, "adjacent", neighborColor);
+        }
+      });
+    }
+    function selectNode(nodeId) {
+      const card = nodeMap.get(nodeId);
+      if (!card) return;
+      clearHighlights();
+      const selected = (graphLookup.get(nodeId) || {}).element
+        || document.querySelector('.graph-canvas svg [id*="flowchart-' + nodeId + '-"]');
+      if (selected) {
+        selected.classList.add("selected-node");
+        addHighlightRing(selected, "selected");
+      }
+      highlightNeighborhood(nodeId);
+      renderDetail(card);
+    }
+    function attachNodeHandlers() {
+      buildGraphLookup();
+      graphLookup.forEach((entry, nodeId) => {
+        if (!entry.element || !nodeMap.has(nodeId)) return;
+        entry.element.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          if (suppressNodeClick) return;
+          selectNode(nodeId);
+        });
+      });
+    }
+    detail.addEventListener("click", (event) => {
+      const trigger = event.target.closest("[data-node-ref]");
+      if (!trigger) return;
+      event.preventDefault();
+      const nodeId = trigger.getAttribute("data-node-ref");
+      if (nodeId) selectNode(nodeId);
+    });
+    graphWindow.addEventListener("wheel", (event) => {
+      event.preventDefault();
+      setScale(scale * (event.deltaY < 0 ? 1.08 : 0.92), event);
+    }, { passive:false });
+    graphWindow.addEventListener("pointerdown", (event) => {
+      if (event.button !== 0 || !graphCanvas) return;
+      const svg = graphCanvas.querySelector("svg");
+      if (!svg) return;
+      ensurePan(getSvgSize(svg));
+      dragState = {
+        startX:event.clientX,
+        startY:event.clientY,
+        panX:pan.x,
+        panY:pan.y,
+        moved:false,
+        captured:false,
+        pointerId:event.pointerId
+      };
+    });
+    graphWindow.addEventListener("pointermove", (event) => {
+      if (!dragState) return;
+      const dx = event.clientX - dragState.startX;
+      const dy = event.clientY - dragState.startY;
+      if (!dragState.moved && Math.abs(dx) + Math.abs(dy) <= 4) return;
+      if (!dragState.moved) {
+        dragState.moved = true;
+        dragState.captured = true;
+        graphWindow.setPointerCapture(dragState.pointerId);
+        graphWindow.classList.add("is-dragging");
+      }
+      const svg = graphCanvas.querySelector("svg");
+      pan = clampPan(getSvgSize(svg), dragState.panX + dx, dragState.panY + dy);
+      applyTransform();
+    });
+    function endDrag(event) {
+      if (!dragState) return;
+      suppressNodeClick = dragState.moved;
+      const wasCaptured = dragState.captured;
+      dragState = null;
+      if (wasCaptured) {
+        graphWindow.classList.remove("is-dragging");
+        try { graphWindow.releasePointerCapture(event.pointerId); } catch (error) {}
+      }
+      if (suppressNodeClick) setTimeout(() => { suppressNodeClick = false; }, 0);
+    }
+    graphWindow.addEventListener("pointerup", endDrag);
+    graphWindow.addEventListener("pointercancel", endDrag);
+    document.getElementById("zoom-in").addEventListener("click", () => setScale(scale * 1.12));
+    document.getElementById("zoom-out").addEventListener("click", () => setScale(scale / 1.12));
+    document.getElementById("reset-view").addEventListener("click", () => { scale = 0.43; pan = { x:null, y:null }; applyTransform(); });
+    window.addEventListener("keydown", (event) => {
+      if (event.target && ["INPUT","TEXTAREA","SELECT"].includes(event.target.tagName)) return;
+      if (event.key === "+" || event.key === "=") { event.preventDefault(); setScale(scale * 1.12); }
+      if (event.key === "-" || event.key === "_") { event.preventDefault(); setScale(scale / 1.12); }
+    });
+    window.addEventListener("resize", applyTransform);
+    attachNodeHandlers();
+    selectNode(defaultNodeId);
+    applyTransform();
+  </script>
+</body>
+</html>

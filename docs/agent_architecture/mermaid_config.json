@@ -1,0 +1,19 @@
+{
+  "theme": "base",
+  "flowchart": {
+    "htmlLabels": false,
+    "curve": "basis",
+    "nodeSpacing": 44,
+    "rankSpacing": 58
+  },
+  "themeVariables": {
+    "fontFamily": "Microsoft YaHei, SimHei, Noto Sans CJK SC, sans-serif",
+    "fontSize": "13px",
+    "primaryColor": "#D9EAD3",
+    "primaryTextColor": "#1f2d2a",
+    "primaryBorderColor": "#6A8F63",
+    "lineColor": "#61736b",
+    "clusterBkg": "#fffaf0",
+    "clusterBorder": "#decfaa"
+  }
+}

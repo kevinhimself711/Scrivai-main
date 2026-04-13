@@ -1,0 +1,60 @@
+flowchart LR
+    subgraph Input["输入资产"]
+        direction TB
+        Raw["Raw 原始工程包"]
+        Processed["Processed 章节树"]
+        TaskBook["任务书 / 标准规范"]
+    end
+    subgraph Normalize["结构归一化"]
+        direction TB
+        RawParser["Document Parse Agent"]
+        Normalizer["Structure Normalizer"]
+        Chunker["Chunk & Dedup Agent"]
+        Taxonomy["Subtype + Scene Tagger"]
+    end
+    subgraph Extract["知识识别"]
+        direction TB
+        SlotMiner["Slot Miner"]
+        PassageCurator["Passage Curator"]
+        TemplateCurator["Template Curator"]
+        RuleExtractor["Rule & Risk Extractor"]
+        EvidenceLinker["Evidence Linker"]
+    end
+    subgraph Stores["专题知识资产"]
+        direction TB
+        SlotStore["Slot Store"]
+        PassageStore["Passage Store"]
+        TemplateStore["Template Store"]
+        RuleStore["Rule Store"]
+        EvidenceStore["Evidence Store"]
+    end
+    subgraph Runtime["运行期入口与治理"]
+        direction TB
+        KnowledgeStore["KnowledgeStore"]
+        Governance["Governance"]
+    end
+    Raw --> RawParser --> Normalizer
+    Processed --> Normalizer
+    Normalizer --> Chunker --> Taxonomy
+    TaskBook --> RuleExtractor
+    Taxonomy --> SlotMiner --> SlotStore
+    Taxonomy --> PassageCurator --> PassageStore
+    Taxonomy --> TemplateCurator --> TemplateStore
+    Taxonomy --> RuleExtractor --> RuleStore
+    Taxonomy --> EvidenceLinker --> EvidenceStore
+    SlotStore --> KnowledgeStore
+    PassageStore --> KnowledgeStore
+    TemplateStore --> KnowledgeStore
+    RuleStore --> KnowledgeStore
+    EvidenceStore --> KnowledgeStore
+    KnowledgeStore --> Governance
+    classDef input fill:#FCE4D6,stroke:#B76E4C,color:#1f2d2a
+    classDef normalize fill:#D9EAD3,stroke:#6A8F63,color:#1f2d2a
+    classDef extract fill:#E2F0D9,stroke:#6A8F63,color:#1f2d2a
+    classDef store fill:#DDEBF7,stroke:#5B8DB0,color:#1f2d2a
+    classDef sdk fill:#EFE6D2,stroke:#9A825A,color:#1f2d2a
+    class Raw,Processed,TaskBook input
+    class RawParser,Normalizer,Chunker,Taxonomy normalize
+    class SlotMiner,PassageCurator,TemplateCurator,RuleExtractor,EvidenceLinker extract
+    class SlotStore,PassageStore,TemplateStore,RuleStore,EvidenceStore store
+    class KnowledgeStore,Governance sdk

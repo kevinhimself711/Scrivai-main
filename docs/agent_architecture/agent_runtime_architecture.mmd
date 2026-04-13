@@ -1,0 +1,70 @@
+flowchart TD
+    Start(["Start Request"]) --> Intake
+    subgraph IntakeLayer["需求理解与表单规划"]
+        direction TB
+        Intake["Intake Agent"]
+        Classifier["Subtype + Scene Classifier"]
+        FormPlanner["Form Planner Agent"]
+        Completeness{"关键信息完整?"}
+        Clarify["Clarification Agent"]
+    end
+    subgraph GenerationLayer["章节生成策略层"]
+        direction LR
+        GenPlanner["Generation Planner"]
+        Router["Chapter Router"]
+        FillOnly["fill_only"]
+        SelectFill["select_and_fill"]
+        Compose["controlled_compose"]
+        DeriveRules["derive_by_rules"]
+        Assembler["Assembler"]
+    end
+    subgraph ReviewLayer["审核与修订闭环"]
+        direction TB
+        Context["Context Agent"]
+        Consistency["Consistency Agent"]
+        Compliance["Compliance Agent"]
+        Pass{"通过审核?"}
+        RevisionPlanner["Revision Planner"]
+        Revision["Revision Agent"]
+        Output["Output / Publish Pack"]
+    end
+    subgraph SDKLayer["SDK 工具层"]
+        direction LR
+        LLMClient["LLMClient"]
+        KnowledgeStore["KnowledgeStore"]
+        GenerationEngine["GenerationEngine"]
+        GenerationContext["GenerationContext"]
+        AuditEngine["AuditEngine"]
+    end
+    Intake --> Classifier --> FormPlanner --> Completeness
+    Completeness -- 否 --> Clarify --> FormPlanner
+    Completeness -- 是 --> GenPlanner --> Router
+    Router --> FillOnly --> Assembler
+    Router --> SelectFill --> Assembler
+    Router --> Compose --> Assembler
+    Router --> DeriveRules --> Assembler
+    Assembler --> Context --> Consistency --> Compliance --> Pass
+    Pass -- 否 --> RevisionPlanner --> Revision --> Consistency
+    Pass -- 是 --> Output
+    GenerationEngine -.-> FillOnly
+    GenerationEngine -.-> SelectFill
+    KnowledgeStore -.-> GenPlanner
+    KnowledgeStore -.-> SelectFill
+    KnowledgeStore -.-> DeriveRules
+    KnowledgeStore -.-> Compliance
+    LLMClient -.-> Compose
+    GenerationContext -.-> Context
+    AuditEngine -.-> Compliance
+    classDef agent fill:#D9EAD3,stroke:#6A8F63,color:#1f2d2a
+    classDef policy fill:#EADCF8,stroke:#8B67A6,color:#1f2d2a
+    classDef decision fill:#DDF4FF,stroke:#2F80A8,color:#1f2d2a
+    classDef output fill:#DDEFD5,stroke:#6A8F63,color:#1f2d2a
+    classDef sdk fill:#EFE6D2,stroke:#9A825A,color:#1f2d2a
+    classDef input fill:#FCE4D6,stroke:#B76E4C,color:#1f2d2a
+    class Start input
+    class Intake,Classifier,FormPlanner,Clarify,GenPlanner,Router,Context,Consistency,Compliance agent
+    class FillOnly,SelectFill,Compose,DeriveRules,Assembler policy
+    class Completeness,Pass decision
+    class RevisionPlanner,Revision agent
+    class Output output
+    class LLMClient,KnowledgeStore,GenerationEngine,GenerationContext,AuditEngine sdk

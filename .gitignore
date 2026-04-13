@@ -13,6 +13,8 @@ __pycache__/
 logs/
 *.log
 Reference/
+.env
+!.env.example
 
 # Test outputs
 tests/outputs/
