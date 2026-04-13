@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import re
+from datetime import datetime
+from pathlib import Path
+
 import streamlit as st
 from dotenv import load_dotenv
 
@@ -20,6 +24,83 @@ from demo.generator import (
     generate_demo_markdown,
     load_llm_config_from_env,
 )
+from demo.image_manager import render_image_upload_section
+from demo.word_exporter import markdown_to_docx
+
+
+_HEADING_PATTERN = re.compile(r"^(#{1,6})\s+(.+)$")
+_HISTORY_LIMIT = 5
+
+
+def _parse_headings(markdown: str) -> list[dict]:
+    """提取 Markdown 标题，附带稳定锚点 ID。"""
+    headings: list[dict] = []
+    for line in markdown.splitlines():
+        match = _HEADING_PATTERN.match(line)
+        if not match:
+            continue
+        level = len(match.group(1))
+        text = match.group(2).strip()
+        headings.append(
+            {
+                "level": level,
+                "text": text,
+                "anchor": f"scrivai-h{len(headings)}",
+            }
+        )
+    return headings
+
+
+def _inject_anchors(markdown: str, headings: list[dict]) -> str:
+    """在每个标题前注入隐藏锚点，供侧边栏目录跳转。"""
+    if not headings:
+        return markdown
+    lines = markdown.splitlines()
+    out: list[str] = []
+    heading_idx = 0
+    for line in lines:
+        if _HEADING_PATTERN.match(line) and heading_idx < len(headings):
+            out.append(f'<a id="{headings[heading_idx]["anchor"]}"></a>')
+            out.append("")
+            heading_idx += 1
+        out.append(line)
+    return "\n".join(out)
+
+
+def _render_sidebar_toc(headings: list[dict]) -> None:
+    """在侧边栏渲染可点击的目录导航。"""
+    if not headings:
+        st.caption("（未解析到标题）")
+        return
+    min_level = min(h["level"] for h in headings)
+    lines: list[str] = []
+    for heading in headings:
+        indent = "  " * (heading["level"] - min_level)
+        lines.append(f"{indent}- [{heading['text']}](#{heading['anchor']})")
+    st.markdown("\n".join(lines))
+
+
+def _append_history(
+    *,
+    markdown_text: str,
+    variant: dict,
+    image_count: int,
+) -> None:
+    """把一次成功生成的快照追加到会话历史。"""
+    history = st.session_state.setdefault("generation_history", [])
+    history.insert(
+        0,
+        {
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "variant_id": variant["id"],
+            "variant_label": variant["label"],
+            "style_title": variant["style_title"],
+            "char_count": len(markdown_text),
+            "image_count": image_count,
+            "markdown": markdown_text,
+        },
+    )
+    del history[_HISTORY_LIMIT:]
 
 
 def _init_field_defaults(default_variant_id: str) -> None:
@@ -101,6 +182,10 @@ def main() -> None:
 
     selected_variant = _render_template_selector(variants)
 
+    st.divider()
+    render_image_upload_section()
+    st.divider()
+
     with st.sidebar:
         st.subheader("当前模板")
         st.write(f"**{selected_variant['label']}｜{selected_variant['style_title']}**")
@@ -130,9 +215,46 @@ def main() -> None:
         )
 
         st.divider()
-        st.subheader("当前已启用章节")
-        for chapter in enabled_chapters:
-            st.write(f"- {chapter['title']}")
+        sidebar_markdown = st.session_state.get("generated_markdown", "")
+        if sidebar_markdown:
+            st.subheader("文档目录")
+            st.caption("点击跳转到对应章节")
+            _render_sidebar_toc(_parse_headings(sidebar_markdown))
+        else:
+            st.subheader("当前已启用章节")
+            st.caption("生成后此处会自动变成可点击的文档目录")
+            for chapter in enabled_chapters:
+                st.write(f"- {chapter['title']}")
+
+        st.divider()
+        st.subheader("生成历史")
+        history = st.session_state.get("generation_history", [])
+        if not history:
+            st.caption("暂无历史记录，点击生成后会自动保存最近 5 次结果。")
+        else:
+            st.caption(f"最近 {len(history)} 次生成（最多保留 {_HISTORY_LIMIT} 条）")
+            for idx, entry in enumerate(history):
+                with st.container(border=True):
+                    st.markdown(
+                        f"**{entry['timestamp']}**  \n"
+                        f"{entry['variant_label']}｜{entry['style_title']}  \n"
+                        f"字数：{entry['char_count']}｜图片：{entry['image_count']} 张"
+                    )
+                    col_view, col_download = st.columns(2)
+                    with col_view:
+                        if st.button("查看", key=f"history_view_{idx}", use_container_width=True):
+                            st.session_state["generated_markdown"] = entry["markdown"]
+                            st.session_state["generated_template_variant"] = entry["variant_id"]
+                            st.rerun()
+                    with col_download:
+                        st.download_button(
+                            label="下载 MD",
+                            data=entry["markdown"],
+                            file_name=build_output_filename(entry["variant_id"]),
+                            mime="text/markdown",
+                            key=f"history_download_{idx}",
+                            use_container_width=True,
+                        )
 
     with st.form("line_project_demo_form"):
         st.subheader("关键数据表单")
@@ -191,6 +313,11 @@ def main() -> None:
         else:
             st.session_state["generated_markdown"] = markdown_text
             st.session_state["generated_template_variant"] = selected_variant["id"]
+            _append_history(
+                markdown_text=markdown_text,
+                variant=selected_variant,
+                image_count=len(st.session_state.get("uploaded_images", [])),
+            )
             st.success("施工方案生成完成。")
 
     generated_markdown = st.session_state.get("generated_markdown", "")
@@ -204,12 +331,44 @@ def main() -> None:
         st.caption(
             f"当前预览：{generated_variant['label']}｜{generated_variant['style_title']}｜{generated_variant['length_bias']}"
         )
-        st.markdown(generated_markdown)
-        st.download_button(
-            label="下载 Markdown",
-            data=generated_markdown,
-            file_name=build_output_filename(generated_variant_id),
-            mime="text/markdown",
+
+        md_filename = build_output_filename(generated_variant_id)
+        docx_filename = Path(md_filename).with_suffix(".docx").name
+        try:
+            docx_bytes = markdown_to_docx(
+                generated_markdown,
+                title=f"{generated_variant['label']}｜{generated_variant['style_title']}",
+            )
+            docx_error: str | None = None
+        except Exception as exc:  # noqa: BLE001
+            docx_bytes = b""
+            docx_error = str(exc)
+
+        col_md, col_docx = st.columns(2)
+        with col_md:
+            st.download_button(
+                label="下载 Markdown",
+                data=generated_markdown,
+                file_name=md_filename,
+                mime="text/markdown",
+                use_container_width=True,
+            )
+        with col_docx:
+            if docx_error:
+                st.error(f"Word 生成失败：{docx_error}")
+            else:
+                st.download_button(
+                    label="下载 Word (.docx)",
+                    data=docx_bytes,
+                    file_name=docx_filename,
+                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                    use_container_width=True,
+                )
+
+        headings = _parse_headings(generated_markdown)
+        st.markdown(
+            _inject_anchors(generated_markdown, headings),
+            unsafe_allow_html=True,
         )
 
 
